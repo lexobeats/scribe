@@ -40,7 +40,7 @@
     .btn:active { transform: translateY(1px) scale(.98); }
 
     /* Panneau d'édition au milieu droit */
-    .editor { position: fixed; top: 50%; right: 16px; transform: translateY(-50%); width: min(520px, 38vw); max-width: 520px; background: var(--panel); backdrop-filter: blur(8px); border: 1px solid #213052; border-radius: 16px; padding: 12px; box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4; }
+    .editor { position: fixed; top: 50%; left: 16px; transform: translateY(-50%); width: min(520px, 38vw); max-width: 520px; max-height: 70vh; overflow-y: auto; overflow-x: hidden; background: var(--panel); backdrop-filter: blur(8px); border: 1px solid #213052; border-radius: 16px; padding: 12px; box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4; }
     .editor h2 { font-size: 14px; margin: 0 0 8px 0; color: var(--muted); font-weight: 700; letter-spacing: .3px; }
 
     table { width: 100%; border-collapse: collapse; }
@@ -74,7 +74,7 @@
       <div class="pointer" aria-hidden="true"></div>
       <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
       <div class="controls">
-        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">➡️ Lancer</button>
+        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer</button>
       </div>
     </main>
 
@@ -103,6 +103,9 @@
     </table>
     <div style="display:flex; gap:8px; margin-top:10px;">
       <button id="addRowBtn" class="btn" title="Ajouter un participant">+ Ajouter</button>
+      <button id="importCsvBtn" class="btn" title="Importer depuis un CSV (;)">📥 Importer CSV</button>
+      <button id="exportCsvBtn" class="btn" title="Exporter en CSV (;)">📤 Exporter CSV</button>
+      <input id="importFile" type="file" accept=".csv,text/csv" style="display:none" />
     </div>
   </aside>
 
@@ -119,6 +122,10 @@
     const spinBtn = document.getElementById('spinBtn');
     const rowsTbody = document.getElementById('rows');
     const addRowBtn = document.getElementById('addRowBtn');
+    const importCsvBtn = document.getElementById('importCsvBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const importFileInput = document.getElementById('importFile');
+
 
     const resultBar = document.getElementById('resultBar');
     const winnerNameEl = document.getElementById('winnerName');
@@ -373,6 +380,9 @@
 
     window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); spin(); } });
     spinBtn.addEventListener('click', spin);
+    exportCsvBtn.addEventListener('click', exportCSV);
+    importCsvBtn.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', handleImportCSV);
 
     // Boot
     resizeCanvasToRadius();
@@ -381,6 +391,128 @@
     drawWheel();
     renderTable();
     window.addEventListener('resize', () => { resizeCanvasToRadius(); drawWheel(); });
+
+    /* === Import/Export CSV (séparateur ;) === */
+
+function exportCSV() {
+  const header = ['Nom', 'Dernier passage', 'Couleur'];
+  const rows = people.map(p => [
+    p.name || '',
+    p.last || '',
+    (p.color && p.color.trim()) || ''
+  ]);
+  const csv = [header, ...rows].map(r => r.map(csvEscape).join(';')).join('\r\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'participants.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+
+function csvEscape(val) {
+  val = String(val ?? '');
+  return /[;"\n\r]/.test(val) ? '"' + val.replace(/"/g, '""') + '"' : val;
+}
+
+function handleImportCSV(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const text = String(reader.result);
+      const rows = parseCSV(text, ';');
+      if (!rows.length) return;
+
+      let startIdx = 0;
+      let nameIdx = 0, dateIdx = 1, colorIdx = 2;
+
+      // Détection d'en-têtes éventuels
+      const header = rows[0].map(h => h.trim().toLowerCase());
+      if (header.some(h => ['nom', 'dernier passage', 'couleur'].some(k => h.includes(k)))) {
+        startIdx = 1;
+        nameIdx = header.findIndex(h => h.startsWith('nom'));       if (nameIdx < 0) nameIdx = 0;
+        dateIdx = header.findIndex(h => h.startsWith('dernier'));   if (dateIdx < 0) dateIdx = 1;
+        colorIdx = header.findIndex(h => h.startsWith('couleur'));  if (colorIdx < 0) colorIdx = 2;
+      }
+
+      const imported = [];
+      for (let i = startIdx; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r.length) continue;
+        const name = (r[nameIdx] || '').trim();
+        const last = (r[dateIdx] || '').trim();
+        const color = (r[colorIdx] || '').trim();
+        if (!name) continue;
+        imported.push({ name, last: normalizeDate(last), color });
+      }
+
+      if (imported.length) {
+        people = imported;
+        onDataChange();
+        renderTable();
+      }
+    } finally {
+      importFileInput.value = '';
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// Parse CSV simple avec guillemets et séparateur configurable (par défaut ;)
+function parseCSV(text, delimiter = ';') {
+  const rows = [];
+  let cur = '', row = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        cur += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === delimiter) {
+        row.push(cur); cur = '';
+      } else if (ch === '\n') {
+        row.push(cur); rows.push(row); row = []; cur = '';
+      } else if (ch === '\r') {
+        // ignore CR
+      } else {
+        cur += ch;
+      }
+    }
+  }
+  if (cur.length > 0 || row.length > 0) {
+    row.push(cur); rows.push(row);
+  }
+  return rows;
+}
+
+// Normalise quelques formats de date vers YYYY-MM-DD (vide si non reconnu)
+function normalizeDate(s) {
+  if (!s) return '';
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return s;
+  const fr = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (fr) {
+    const d = String(fr[1]).padStart(2, '0');
+    const m = String(fr[2]).padStart(2, '0');
+    const y = fr[3];
+    return `${y}-${m}-${d}`;
+  }
+  return '';
+}
 
     // Polyfill roundRect
     if (!CanvasRenderingContext2D.prototype.roundRect) {
