@@ -5,163 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>La roue du Scribe !</title>
   <style>
-    :root{
-      --wheel-radius: 260px;         /* ✅ Rayon de la roue défini en CSS */
-      --accent: #3b82f6;
-      --accent-orange: #f59e0b;      /* curseur */
+    :root {
+      --wheel-radius: 260px;
+      --accent-orange: #f59e0b;
       --panel: #0f172aee;
       --text: #e5e7eb;
       --muted: #94a3b8;
     }
 
-    html,body{
-      height:100%; margin:0;
-      background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%);
-      color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    }
+    html, body { height: 100%; margin: 0; background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%); color: var(--text); font-family: system-ui, sans-serif; }
 
-    .wrap{ height:100%; display:grid; grid-template-rows:1fr; grid-template-columns:1fr; }
+    header { position: fixed; top: 12px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+    h1 { font-size: clamp(32px, 5vw, 60px); margin: 0; font-weight: 900; text-shadow: 0 4px 22px rgba(0,0,0,.45); animation: puff 1.2s ease-in-out infinite alternate; }
+    p.subtitle { margin: 6px 0 0; font-size: 16px; color: var(--muted); font-weight: 500; }
+    @keyframes puff { 0% { transform: scale(0.98); } 100% { transform: scale(1.06); } }
 
-    /* Titre centré en haut, animation 2x plus rapide */
-    header{ position:fixed; top:8px; left:0; right:0; display:flex; justify-content:center; z-index:5; pointer-events:none; }
-    header .head{ pointer-events:auto; text-align:center; }
-    header h1{
-      font-size: clamp(28px, 4.6vw, 54px);
-      margin:0;
-      letter-spacing:.3px;
-      font-weight:900;
-      text-shadow:0 4px 22px rgba(0,0,0,.45);
-      animation: puff 1.2s ease-in-out infinite alternate;
-    }
-    header .subtitle{
-      margin:4px 0 0 0;
-      color:var(--muted);
-      font-size: clamp(12px, 1.4vw, 16px);
-      font-weight:600;
-      letter-spacing:.2px;
-    }
-    @keyframes puff{ 0%{ transform:scale(.98) } 100%{ transform:scale(1.06) } }
+    .wheel-area { position: relative; display: grid; place-items: center; height: 100vh; }
 
-    .wheel-area{ position:relative; display:grid; place-items:center; height:100vh; }
+    #wheelCanvas { width: calc(var(--wheel-radius) * 2); height: calc(var(--wheel-radius) * 2); display: block; filter: drop-shadow(0 24px 40px rgba(0,0,0,.45)); border-radius: 50%; }
 
-    /* Canvas dimensionné via le rayon CSS */
-    #wheelCanvas{
-      width:calc(var(--wheel-radius)*2);
-      height:calc(var(--wheel-radius)*2);
-      display:block;
-      filter: drop-shadow(0 24px 40px rgba(0,0,0,.45));
-      background: conic-gradient(from 0deg, #0d1324 0 25%, #0a0f1f 0 50%, #0d1324 0 75%, #0a0f1f 0 100%);
-      border-radius:50%;
-    }
+    .pointer { position: absolute; left: calc(50% + var(--wheel-radius) + 12px); top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 30px solid var(--accent-orange); filter: drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
 
-    /* Curseur à droite, plus grand, orange, pointant vers l'intérieur */
-    .pointer{
-      position:absolute;
-      left: calc(50% + var(--wheel-radius) + 12px);
-      top:50%;
-      transform: translateY(-50%);
-      width:0; height:0;
-      border-top: 20px solid transparent;
-      border-bottom: 20px solid transparent;
-      border-left: 30px solid var(--accent-orange);
-      filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
-    }
+    .controls { margin-top: 20px; display: flex; justify-content: center; }
+    .btn { appearance: none; border: 2px solid #1f2a44; background: linear-gradient(180deg, #2563eb, #1d4ed8); color: var(--text); padding: 18px 28px; border-radius: 14px; font-weight: 800; font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25); }
+    .btn:hover { transform: translateY(-1px); }
 
-    /* Bouton Lancer : plus gros, centré, positionné à égale distance (via JS) */
-    .controls{
-      position:absolute;
-      left:50%; transform:translateX(-50%);
-      display:flex; align-items:center; justify-content:center; gap:12px;
-    }
-    .btn{
-      appearance:none; cursor:pointer;
-      border:1px solid #1f2a44;
-      background: linear-gradient(180deg, #2563eb, #1d4ed8);
-      color:var(--text);
-      padding:18px 28px; border-radius:14px;
-      font-size:18px; font-weight:800;
-      transition: transform .06s ease, box-shadow .12s ease, background .2s ease;
-      box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25);
-    }
-    .btn:hover{ transform:translateY(-1px) }
-    .btn:active{ transform:translateY(1px) scale(.98) }
+    .editor { position: fixed; top: 50%; left: 16px; transform: translateY(-50%); width: min(420px, 36vw); background: var(--panel); backdrop-filter: blur(8px); border: 1px solid #213052; border-radius: 16px; padding: 12px; box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4; }
+    .editor h2 { font-size: 14px; margin: 0 0 8px 0; color: var(--muted); font-weight: 700; }
 
-    /* Résultat */
-    .footer-bar{
-      position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
-      display:flex; gap:10px; align-items:center;
-      background: var(--panel); backdrop-filter: blur(8px);
-      padding:10px 12px; border-radius:999px;
-      border:1px solid #20304e; box-shadow: 0 14px 44px rgba(0,0,0,.45);
-      font-size:14px;
-    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { font-size: 12px; color: var(--muted); padding: 6px 8px; text-align: left; }
+    tbody td { padding: 6px 8px; }
+    tbody tr { border-top: 1px dashed #22304f; }
 
-    /* Panneau d’édition : milieu gauche */
-    .editor{
-      position:fixed; top:50%; left:16px; transform:translateY(-50%);
-      width:min(520px, 38vw); max-width:520px;
-      background: var(--panel); backdrop-filter: blur(8px);
-      border:1px solid #213052; border-radius:16px; padding:12px;
-      box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index:4;
-    }
-    .editor h2{ font-size:14px; margin:0 0 8px 0; color:var(--muted); font-weight:700; letter-spacing:.3px; }
+    input[type="text"], input[type="date"] { width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text); border: 1px solid #26324e; padding: 6px 8px; border-radius: 8px; }
+    .color-cell { width: 56px; }
+    .swatch { width: 28px; height: 20px; border-radius: 6px; border: 1px solid #233250; cursor: pointer; }
+    .chance-cell { width: 84px; text-align: right; font-weight: 700; }
+    .action-cell { width: 40px; text-align: right; }
 
-    table{ width:100%; border-collapse:collapse; }
-    thead th{ text-align:left; font-size:12px; color:var(--muted); font-weight:700; padding:6px 8px; }
-    tbody td{ padding:6px 8px; vertical-align:middle; }
-    tbody tr{ border-top:1px dashed #22304f; }
+    .footer-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--panel); padding: 12px 16px; border-radius: 12px; border: 1px solid #20304e; font-size: 18px; font-weight: 700; }
 
-    input[type="text"], input[type="date"], input[type="color"]{
-      width:100%; box-sizing:border-box; background:#0b1222; color:var(--text);
-      border:1px solid #26324e; padding:8px 10px; border-radius:10px; outline:none;
-    }
-
-    .color-cell{ width:56px; }
-    .swatch{ width:28px; height:20px; border-radius:6px; border:1px solid #233250; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); cursor:pointer; }
-    .chance-cell{ width:84px; font-variant-numeric: tabular-nums; text-align:right; color:#e2e8f0; font-weight:700; }
-    .action-cell{ width:40px; text-align:right; }
-    .iconbtn{ background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:18px; line-height:1; }
-    .iconbtn:hover{ color:#e2e8f0; }
-
-    @media (max-width: 980px){
-      :root{ --wheel-radius: 200px; }
-      .editor{ left:8px; width:min(92vw, 520px); }
-    }
+    @media (max-width: 980px) { :root { --wheel-radius: 200px; } .editor { left: 8px; width: min(92vw, 420px); } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="head">
-        <h1>La roue du Scribe&nbsp;!</h1>
-        <p class="subtitle">Lance la roue et désigne l'heureux prochain scribe du V1&nbsp;! 🙂</p>
-      </div>
-    </header>
+  <header>
+    <h1>La roue du Scribe !</h1>
+    <p class="subtitle">Lance la roue et désigne l'heureux prochain scribe du V1 ! 😃</p>
+  </header>
 
-    <main class="wheel-area">
-      <div class="pointer" aria-hidden="true"></div>
-      <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
-      <div class="controls">
-        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer</button>
-      </div>
-    </main>
-
-    <div class="footer-bar" id="resultBar" style="display:none">
-      <span id="resultText">—</span>
-      <button id="confirmWinnerBtn" class="btn" style="background:linear-gradient(180deg,#10b981,#059669);border-color:#0f5f4b" title="Marquer comme passé aujourd'hui">Valider</button>
-      <button id="closeResultBtn" class="btn" style="background:transparent;border-color:#334155;">Fermer</button>
+  <main class="wheel-area">
+    <div class="pointer" aria-hidden="true"></div>
+    <canvas id="wheelCanvas" width="800" height="800"></canvas>
+    <div class="controls">
+      <button id="spinBtn" class="btn">🎯 Lancer</button>
     </div>
+  </main>
+
+  <div class="footer-bar" id="resultBar" style="display:none">
+    Le prochain scribe est : <span id="winnerName">—</span> !
   </div>
 
-  <!-- Éditeur : Nom | Dernier passage | Couleur | % chance | × -->
-  <aside class="editor" aria-label="Éditeur des participants">
+  <aside class="editor">
     <h2>Participants &amp; dernières dates</h2>
     <table>
       <thead>
         <tr>
-          <th style="width:44%">Nom</th>
-          <th style="width:28%">Dernier passage</th>
+          <th>Nom</th>
+          <th>Dernier passage</th>
           <th class="color-cell">Couleur</th>
           <th class="chance-cell">% chance</th>
           <th class="action-cell"></th>
@@ -169,344 +81,67 @@
       </thead>
       <tbody id="rows"></tbody>
     </table>
-    <div style="display:flex; gap:8px; margin-top:10px;">
-      <button id="addRowBtn" class="btn" title="Ajouter un participant">+ Ajouter</button>
-    </div>
+    <button id="addRowBtn" class="btn" style="margin-top:8px;">+ Ajouter</button>
   </aside>
 
   <script>
-    /*********************************************************
-     * La roue du Scribe — logique (v3)
-     * - Curseur à DROITE (0°)
-     * - Pourcentages affichés (lecture seule)
-     * - Couleur par personne via color picker
-     * - Bouton 🎯 Lancer plus gros, placé à mi-distance
-     *   entre le bas de la roue et le bandeau de résultat
-     *********************************************************/
-
     const canvas = document.getElementById('wheelCanvas');
     const ctx = canvas.getContext('2d');
-    const controls = document.querySelector('.controls');
     const spinBtn = document.getElementById('spinBtn');
-
     const rowsTbody = document.getElementById('rows');
     const addRowBtn = document.getElementById('addRowBtn');
-
     const resultBar = document.getElementById('resultBar');
-    const resultTextEl = document.getElementById('resultText');
-    const confirmWinnerBtn = document.getElementById('confirmWinnerBtn');
-    const closeResultBtn = document.getElementById('closeResultBtn');
+    const winnerNameEl = document.getElementById('winnerName');
 
-    let lastWinnerName = '';
-
-    // Rayon depuis CSS
-    function getCssRadius(){
+    function getCssRadius() {
       const v = getComputedStyle(document.documentElement).getPropertyValue('--wheel-radius').trim();
       const m = v.match(/([\d.]+)px/);
       return m ? parseFloat(m[1]) : 260;
     }
-    function resizeCanvasToRadius(){
+
+    function resizeCanvasToRadius() {
       const r = getCssRadius();
-      const size = r*2;
-      const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-      canvas.style.width = size+'px';
-      canvas.style.height = size+'px';
-      canvas.width = Math.round(size*dpr);
-      canvas.height = Math.round(size*dpr);
+      const size = r * 2;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
       ctx.setTransform(dpr,0,0,dpr,0,0);
     }
 
-    const STORAGE_KEY = 'scribe-wheel:v3';
-    /** @type {{name:string,last:string,color?:string}[]} */
-    let people = [];
+    let people = [ {name:'Alice',last:'',color:''}, {name:'Benoît',last:'',color:''} ];
+    const DAY=86400000;
+    function daysSince(iso){ if(!iso)return null; const d=new Date(iso+'T00:00:00'); if(isNaN(d))return null; return Math.max(0,Math.floor((Date.now()-d)/DAY)); }
+    function weightFor(iso,max){ const ds=daysSince(iso); return ds===null?max+30:Math.max(1,ds); }
 
-    function defaultColor(i,n){
-      const h = Math.round((360/n)*i + 8) % 360;
-      const s = 68 + Math.round(12*Math.sin(i));
-      const l = 48 + Math.round(5*Math.cos(i));
-      return `hsl(${h} ${s}% ${l}%)`;
-    }
-
-    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify({people})); }
-    function load(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){
-        try{ const obj = JSON.parse(raw); if(Array.isArray(obj.people)) people = obj.people; }catch{}
-      }
-      if(!people.length){
-        people = [
-          {name:'Alice', last:'', color:''},
-          {name:'Benoît', last:'', color:''},
-          {name:'Chloé', last:'', color:''},
-        ];
-      }
-    }
-
-    // Temps / poids
-    const DAY = 24*60*60*1000;
-    function daysSince(iso){
-      if(!iso) return null;
-      const d = new Date(iso+'T00:00:00');
-      if(isNaN(d)) return null;
-      const diff = Math.floor((Date.now() - d.getTime())/DAY);
-      return Math.max(0,diff);
-    }
-    function weightFor(iso, maxBoostDays){
-      const ds = daysSince(iso);
-      if(ds === null) return maxBoostDays + 30; // vide => bonus
-      return Math.max(1, ds);
-    }
-
-    // Parts
-    let slices = []; // {name,startDeg,endDeg,midDeg,color,weight,percent}
+    let slices=[]; let rotationDeg=0;
     function rebuildSlices(){
-      const dayVals = people.map(p => daysSince(p.last)).filter(v => v !== null);
-      const maxDays = dayVals.length ? Math.max(...dayVals) : 30;
-      const weights = people.map(p => weightFor(p.last, maxDays));
-      const total = weights.reduce((a,b)=>a+b,0) || 1;
-
-      let cursor = -90; // 0° en haut pour le dessin
-      slices = people.map((p,i) => {
-        const w = weights[i];
-        const ang = (w/total)*360;
-        const startDeg = cursor;
-        const endDeg = cursor + ang;
-        cursor = endDeg;
-        const percent = (w/total)*100;
-        return {
-          name: p.name || '—',
-          startDeg, endDeg, midDeg: startDeg + ang/2,
-          color: (p.color && p.color.trim()) || defaultColor(i, people.length),
-          weight: w, percent
-        };
-      });
+      const vals=people.map(p=>daysSince(p.last)).filter(v=>v!==null);
+      const max=vals.length?Math.max(...vals):30;
+      const weights=people.map(p=>weightFor(p.last,max));
+      const total=weights.reduce((a,b)=>a+b,0)||1;
+      let cursor=-90;
+      slices=people.map((p,i)=>{const w=weights[i];const ang=w/total*360;const start=cursor;cursor+=ang;return{name:p.name||'—',startDeg:start,endDeg:cursor,percent:w/total*100,color:p.color||`hsl(${i*60} 70% 50%)`};});
     }
 
-    // Dessin roue
-    let rotationDeg = 0;
-    function drawWheel(){
-      const r = getCssRadius();
-      const cx = r, cy = r;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+    function drawWheel(){const r=getCssRadius();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(r,r);ctx.rotate(rotationDeg*Math.PI/180);slices.forEach(s=>{const a0=s.startDeg*Math.PI/180,a1=s.endDeg*Math.PI/180;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r-8,a0,a1);ctx.closePath();ctx.fillStyle=s.color;ctx.fill();});ctx.restore();}
 
-      ctx.save();
-      ctx.translate(cx,cy);
-      ctx.rotate((Math.PI/180)*rotationDeg);
+    function inRange(a,start,end){const norm=x=>(x%360+360)%360;a=norm(a);start=norm(start);end=norm(end);if(start<end)return a>=start&&a<end;return a>=start||a<end;}
+    function winnerForRotation(rot){let pointer=(0-rot)%360;if(pointer<0)pointer+=360;return slices.find(s=>inRange(pointer,s.startDeg,s.endDeg))||slices[slices.length-1];}
 
-      // Anneau extérieur
-      ctx.beginPath(); ctx.arc(0,0, r, 0, Math.PI*2); ctx.fillStyle = '#0b1328'; ctx.fill();
+    function spin(){const start=performance.now(),init=rotationDeg,target=Math.random()*360,turns=6+Math.floor(Math.random()*3),delta=turns*360+target,dur=5000;function step(t){const p=Math.min(1,(t-start)/dur);const ease=1-(--p*p*p*p);rotationDeg=init+delta*ease;drawWheel();if(p<1)requestAnimationFrame(step);else{const w=winnerForRotation(rotationDeg);winnerNameEl.textContent=w.name;resultBar.style.display='flex';}}requestAnimationFrame(step);}
 
-      // Secteurs + labels
-      slices.forEach((s) => {
-        const a0 = (Math.PI/180)*s.startDeg;
-        const a1 = (Math.PI/180)*s.endDeg;
+    function renderTable(){rowsTbody.innerHTML='';const vals=people.map(p=>daysSince(p.last)).filter(v=>v!==null);const max=vals.length?Math.max(...vals):30;const weights=people.map(p=>weightFor(p.last,max));const total=weights.reduce((a,b)=>a+b,0)||1;people.forEach((p,i)=>{const tr=document.createElement('tr');const td1=document.createElement('td');const n=document.createElement('input');n.value=p.name;n.oninput=()=>{p.name=n.value;rebuildSlices();drawWheel();renderTable();};td1.appendChild(n);const td2=document.createElement('td');const d=document.createElement('input');d.type='date';d.value=p.last;d.onchange=()=>{p.last=d.value;rebuildSlices();drawWheel();renderTable();};td2.appendChild(d);const td3=document.createElement('td');const sw=document.createElement('div');sw.className='swatch';sw.style.background=p.color||`hsl(${i*60} 70% 50%)`;const c=document.createElement('input');c.type='color';c.value='#ff0000';c.style.display='none';sw.onclick=()=>c.click();c.oninput=()=>{p.color=c.value;sw.style.background=c.value;rebuildSlices();drawWheel();};td3.appendChild(sw);td3.appendChild(c);const td4=document.createElement('td');td4.className='chance-cell';td4.textContent=(weights[i]/total*100).toFixed(1)+'%';const td5=document.createElement('td');const btn=document.createElement('button');btn.textContent='×';btn.onclick=()=>{people.splice(i,1);rebuildSlices();drawWheel();renderTable();};td5.appendChild(btn);tr.append(td1,td2,td3,td4,td5);rowsTbody.appendChild(tr);});}
 
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-8, a0, a1); ctx.closePath();
-        ctx.fillStyle = s.color; ctx.fill();
+    addRowBtn.onclick=()=>{people.push({name:'',last:'',color:''});rebuildSlices();drawWheel();renderTable();};
+    spinBtn.onclick=spin;
 
-        // Séparateurs
-        ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1.25;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-8, a0, a1); ctx.stroke();
-
-        // Label
-        ctx.save();
-        const mid = (a0+a1)/2;
-        ctx.rotate(mid);
-        ctx.textAlign='right'; ctx.textBaseline='middle';
-        ctx.font='700 14px system-ui, sans-serif';
-        ctx.beginPath(); ctx.roundRect(-16,-22, r-60, 28, 10); ctx.fillStyle='rgba(255,255,255,.82)'; ctx.fill();
-        ctx.fillStyle='#0b1220';
-        ctx.fillText((s.name||'—').toUpperCase(), r-72, -8);
-        ctx.restore();
-      });
-
-      // Moyeu
-      ctx.beginPath(); ctx.arc(0,0, 30, 0, Math.PI*2); ctx.fillStyle='#111827'; ctx.fill();
-      ctx.lineWidth=3; ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.stroke();
-
-      ctx.restore();
-
-      // Liseré
-      ctx.save(); ctx.translate(cx,cy); ctx.beginPath(); ctx.arc(0,0, r-2, 0, Math.PI*2); ctx.lineWidth=4; ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.stroke(); ctx.restore();
-    }
-
-    // Curseur à DROITE => angle 0°
-    function winnerForRotation(rotDeg){
-      let pointer = (0 - rotDeg) % 360;
-      if(pointer < 0) pointer += 360;
-      return slices.find(s => inRange(pointer, s.startDeg, s.endDeg)) || slices[slices.length-1];
-    }
-    function inRange(a,start,end){
-      const norm = x => (x%360+360)%360;
-      a = norm(a); start = norm(start); end = norm(end);
-      if(start < end) return a >= start && a < end;
-      return a >= start || a < end;
-    }
-
-    // Animation
-    let animId = null;
-    function spin(){
-      if(!people.length) return;
-      resultBar.style.display = 'none';
-      positionControls();
-
-      const start = performance.now();
-      const initial = rotationDeg;
-      const target = Math.random()*360;
-      const turns = 6 + Math.floor(Math.random()*3);
-      const totalDelta = turns*360 + target;
-      const duration = 5200 + Math.random()*1400;
-
-      cancelAnimationFrame(animId);
-      animId = requestAnimationFrame(function step(t){
-        const p = Math.min(1, (t - start)/duration);
-        const ease = backOut(p);
-        rotationDeg = initial + totalDelta*ease;
-        drawWheel();
-        if(p < 1){ animId = requestAnimationFrame(step); }
-        else{
-          const w = winnerForRotation(rotationDeg);
-          showWinner(w.name);
-          flashSlice(w);
-        }
-      });
-    }
-    function backOut(t){ const c1=1.70158, c3=c1+1; return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2); }
-    function flashSlice(slice){
-      const r = getCssRadius();
-      const start = performance.now();
-      function step(t){
-        const p = Math.min(1, (t - start)/1000);
-        drawWheel();
-        ctx.save(); ctx.translate(r,r); ctx.rotate((Math.PI/180)*rotationDeg);
-        const a0=(Math.PI/180)*slice.startDeg, a1=(Math.PI/180)*slice.endDeg;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-6, a0, a1); ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,'+(0.25 + 0.25*Math.sin(p*6*Math.PI))+')';
-        ctx.fill(); ctx.restore();
-        if(p<1) requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    }
-
-    function showWinner(name){
-      lastWinnerName = name || '—';
-      resultTextEl.textContent = `Le prochain scrib est : "${lastWinnerName}" !`;
-      resultBar.style.display = 'flex';
-      positionControls();
-    }
-
-    // Tableau
-    function renderTable(){
-      rowsTbody.innerHTML = '';
-      const dayVals = people.map(p=>daysSince(p.last)).filter(v=>v!==null);
-      const maxDays = dayVals.length ? Math.max(...dayVals) : 30;
-      const weights = people.map(p=>weightFor(p.last, maxDays));
-      const total = weights.reduce((a,b)=>a+b,0) || 1;
-
-      people.forEach((p,idx)=>{
-        const tr = document.createElement('tr');
-
-        // Nom
-        const tdName = document.createElement('td');
-        const inpName = document.createElement('input');
-        inpName.type='text'; inpName.value=p.name; inpName.placeholder='Nom';
-        inpName.addEventListener('input', ()=>{ p.name = inpName.value; onDataChange(); });
-        tdName.appendChild(inpName);
-
-        // Dernier passage
-        const tdDate = document.createElement('td');
-        const inpDate = document.createElement('input');
-        inpDate.type='date'; inpDate.value=p.last||'';
-        inpDate.addEventListener('change', ()=>{ p.last = inpDate.value; onDataChange(); });
-        tdDate.appendChild(inpDate);
-
-        // Couleur
-        const tdColor = document.createElement('td'); tdColor.className='color-cell';
-        const sw = document.createElement('div'); sw.className='swatch';
-        sw.style.background = (p.color && p.color.trim()) || defaultColor(idx, people.length);
-        const colorInput = document.createElement('input'); colorInput.type='color';
-        colorInput.value = toHexColor(sw.style.background); colorInput.style.display='none';
-        sw.addEventListener('click', ()=> colorInput.click());
-        colorInput.addEventListener('input', ()=>{ p.color = colorInput.value; sw.style.background = p.color; onDataChange(); });
-        tdColor.appendChild(sw); tdColor.appendChild(colorInput);
-
-        // % chance (lecture seule)
-        const tdPct = document.createElement('td'); tdPct.className='chance-cell';
-        const w = weights[idx]; const pct = (w/total)*100; tdPct.textContent = pct.toFixed(1)+'%';
-
-        // Supprimer
-        const tdAct = document.createElement('td'); tdAct.className='action-cell';
-        const del = document.createElement('button'); del.className='iconbtn'; del.title='Supprimer'; del.innerHTML='×';
-        del.addEventListener('click', ()=>{ people.splice(idx,1); onDataChange(); renderTable(); });
-        tdAct.appendChild(del);
-
-        tr.appendChild(tdName); tr.appendChild(tdDate); tr.appendChild(tdColor); tr.appendChild(tdPct); tr.appendChild(tdAct);
-        rowsTbody.appendChild(tr);
-      });
-    }
-
-    function toHexColor(cssColor){
-      const c=document.createElement('canvas'), x=c.getContext('2d');
-      x.fillStyle = cssColor; const computed = x.fillStyle; // normalisé en rgb(a)
-      const m = computed.match(/rgb[a]?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/i);
-      if(!m) return '#ffffff';
-      const r = Number(m[1]).toString(16).padStart(2,'0');
-      const g = Number(m[2]).toString(16).padStart(2,'0');
-      const b = Number(m[3]).toString(16).padStart(2,'0');
-      return `#${r}${g}${b}`;
-    }
-
-    function onDataChange(){ rebuildSlices(); save(); drawWheel(); renderTable(); positionControls(); }
-
-    addRowBtn.addEventListener('click', ()=>{ people.push({name:'', last:'', color:''}); onDataChange(); });
-
-    confirmWinnerBtn.addEventListener('click', ()=>{
-      const today = new Date().toISOString().slice(0,10);
-      const p = people.find(x => (x.name||'—') === lastWinnerName);
-      if(p){ p.last = today; onDataChange(); }
-      resultBar.style.display='none';
-      positionControls();
-    });
-    closeResultBtn.addEventListener('click', ()=>{ resultBar.style.display='none'; positionControls(); });
-
-    window.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); spin(); } });
-    spinBtn.addEventListener('click', spin);
-
-    // Positionne le bouton à mi-distance entre bas de roue et haut du résultat
-    function positionControls(){
-      const rectCanvas = canvas.getBoundingClientRect();
-      const rectResult = resultBar.getBoundingClientRect();
-      const bottomOfWheel = rectCanvas.bottom;
-      const topOfResult = (resultBar.style.display==='none')
-        ? window.innerHeight - 16 // approx haut du futur bandeau
-        : rectResult.top;
-      const mid = bottomOfWheel + (topOfResult - bottomOfWheel)/2;
-
-      const parentTop = document.querySelector('.wheel-area').getBoundingClientRect().top;
-      const topWithinParent = mid - parentTop - (controls.offsetHeight/2);
-      controls.style.top = `${Math.max(topWithinParent, rectCanvas.bottom + 8)}px`;
-    }
-
-    // Boot
     resizeCanvasToRadius();
-    load();
     rebuildSlices();
     drawWheel();
     renderTable();
-    positionControls();
-    window.addEventListener('resize', ()=>{ resizeCanvasToRadius(); drawWheel(); positionControls(); });
-
-    // Polyfill roundRect
-    if(!CanvasRenderingContext2D.prototype.roundRect){
-      CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
-        if(typeof r === 'number') r = {tl:r, tr:r, br:r, bl:r};
-        const {tl=0,tr=0,br=0,bl=0} = r||{};
-        this.beginPath(); this.moveTo(x+tl, y); this.lineTo(x+w-tr, y); this.quadraticCurveTo(x+w, y, x+w, y+tr);
-        this.lineTo(x+w, y+h-br); this.quadraticCurveTo(x+w, y+h, x+w-br, y+h);
-        this.lineTo(x+bl, y+h); this.quadraticCurveTo(x, y+h, x, y+h-bl);
-        this.lineTo(x, y+tl); this.quadraticCurveTo(x, y, x+tl, y); this.closePath(); return this;
-      }
-    }
+    window.onresize=()=>{resizeCanvasToRadius();drawWheel();};
   </script>
 </body>
 </html>
