@@ -30,8 +30,19 @@
     /* Canvas dimensionné via le rayon CSS */
     #wheelCanvas { width: calc(var(--wheel-radius) * 2); height: calc(var(--wheel-radius) * 2); display: block; filter: drop-shadow(0 24px 40px rgba(0,0,0,.45)); background: conic-gradient(from 0deg, #0d1324 0 25%, #0a0f1f 0 50%, #0d1324 0 75%, #0a0f1f 0 100%); border-radius: 50%; }
 
-    /* Curseur à droite, plus grand, orange, pointant vers l'intérieur */
-    .pointer { position: absolute; left: calc(50% + var(--wheel-radius) + 12px); top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 30px solid var(--accent-orange); filter: drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
+/* Curseur à droite, orange, collé à la roue (0°) */
+.pointer {
+  position: absolute;
+  left: calc(50% + var(--wheel-radius) - 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 20px solid transparent;
+  border-bottom: 20px solid transparent;
+  border-left: 30px solid var(--accent-orange);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
+  z-index: 3;
+}
 
     /* Bouton Lancer sous la roue */
     .controls { margin-top: 14px; display: flex; gap: 12px; align-items: center; justify-content: center; }
