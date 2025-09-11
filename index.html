@@ -3,85 +3,202 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>La roue du Scribe !</title>
+  <title>Roue du Scribe — Équipe</title>
   <style>
     :root {
       --wheel-radius: 260px;
-      --accent-orange: #f59e0b;
+      --accent: orange;
+      --bg: #0b1220;
       --panel: #0f172aee;
       --text: #e5e7eb;
       --muted: #94a3b8;
     }
 
-    html, body { height: 100%; margin: 0; background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%); color: var(--text); font-family: system-ui, sans-serif; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial;
+    }
 
-    header { position: fixed; top: 12px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; z-index: 5; }
-    h1 { font-size: clamp(32px, 5vw, 60px); margin: 0; font-weight: 900; text-shadow: 0 4px 22px rgba(0,0,0,.45); animation: puff 1.2s ease-in-out infinite alternate; }
-    p.subtitle { margin: 6px 0 0; font-size: 16px; color: var(--muted); font-weight: 500; }
-    @keyframes puff { 0% { transform: scale(0.98); } 100% { transform: scale(1.06); } }
+    .wrap {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 1fr;
+    }
 
-    .wheel-area { position: relative; display: grid; place-items: center; height: 100vh; }
+    header {
+      text-align: center;
+      padding: 20px;
+    }
 
-    #wheelCanvas { width: calc(var(--wheel-radius) * 2); height: calc(var(--wheel-radius) * 2); display: block; filter: drop-shadow(0 24px 40px rgba(0,0,0,.45)); border-radius: 50%; }
+    h1 {
+      font-size: 42px;
+      margin: 0;
+      font-weight: 900;
+      animation: pulse 2s infinite;
+    }
 
-    .pointer { position: absolute; left: calc(50% + var(--wheel-radius) + 12px); top: 50%; transform: translateY(-50%); width: 0; height: 0; border-top: 20px solid transparent; border-bottom: 20px solid transparent; border-left: 30px solid var(--accent-orange); filter: drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
 
-    .controls { margin-top: 20px; display: flex; justify-content: center; }
-    .btn { appearance: none; border: 2px solid #1f2a44; background: linear-gradient(180deg, #2563eb, #1d4ed8); color: var(--text); padding: 18px 28px; border-radius: 14px; font-weight: 800; font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25); }
-    .btn:hover { transform: translateY(-1px); }
+    .wheel-area {
+      position: relative;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
 
-    .editor { position: fixed; top: 50%; left: 16px; transform: translateY(-50%); width: min(420px, 36vw); background: var(--panel); backdrop-filter: blur(8px); border: 1px solid #213052; border-radius: 16px; padding: 12px; box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4; }
-    .editor h2 { font-size: 14px; margin: 0 0 8px 0; color: var(--muted); font-weight: 700; }
+    #wheelCanvas {
+      width: calc(var(--wheel-radius) * 2);
+      height: calc(var(--wheel-radius) * 2);
+      display: block;
+      filter: drop-shadow(0 24px 40px rgba(0,0,0,.45));
+      border-radius: 50%;
+    }
+
+    /* Curseur à droite */
+    .pointer {
+      position: absolute;
+      top: 50%;
+      left: calc(50% + var(--wheel-radius) + 10px);
+      transform: translateY(-50%) rotate(180deg);
+      width: 0;
+      height: 0;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-left: 30px solid var(--accent);
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,.45));
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid #1f2a44;
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25);
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .editor {
+      position: fixed;
+      top: 50%;
+      right: 16px;
+      transform: translateY(-50%);
+      width: 320px;
+      background: var(--panel);
+      backdrop-filter: blur(8px);
+      border: 1px solid #213052;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 14px 44px rgba(0,0,0,.45);
+    }
+
+    .editor h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
 
     table { width: 100%; border-collapse: collapse; }
-    thead th { font-size: 12px; color: var(--muted); padding: 6px 8px; text-align: left; }
-    tbody td { padding: 6px 8px; }
+    thead th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700; padding: 6px 4px; }
+    tbody td { padding: 6px 4px; }
     tbody tr { border-top: 1px dashed #22304f; }
 
-    input[type="text"], input[type="date"] { width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text); border: 1px solid #26324e; padding: 6px 8px; border-radius: 8px; }
-    .color-cell { width: 56px; }
-    .swatch { width: 28px; height: 20px; border-radius: 6px; border: 1px solid #233250; cursor: pointer; }
-    .chance-cell { width: 84px; text-align: right; font-weight: 700; }
-    .action-cell { width: 40px; text-align: right; }
+    input[type="text"], input[type="date"], input[type="color"] {
+      width: 100%;
+      box-sizing: border-box;
+      background: #0b1222;
+      color: var(--text);
+      border: 1px solid #26324e;
+      padding: 6px;
+      border-radius: 8px;
+    }
 
-    .footer-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--panel); padding: 12px 16px; border-radius: 12px; border: 1px solid #20304e; font-size: 18px; font-weight: 700; }
+    .readonly {
+      background: #1e293b;
+      border: none;
+      text-align: center;
+      color: var(--muted);
+    }
 
-    @media (max-width: 980px) { :root { --wheel-radius: 200px; } .editor { left: 8px; width: min(92vw, 420px); } }
+    .action-cell { width: 30px; text-align: right; }
+    .iconbtn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+
+    .footer-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--panel);
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid #20304e;
+      box-shadow: 0 14px 44px rgba(0,0,0,.45);
+      font-size: 14px;
+    }
+
+    .winner-badge { font-weight: 700; }
+
   </style>
 </head>
 <body>
-  <header>
-    <h1>La roue du Scribe !</h1>
-    <p class="subtitle">Lance la roue et désigne l'heureux prochain scribe du V1 ! 😃</p>
-  </header>
+  <div class="wrap">
+    <header>
+      <h1>Roue du Scribe</h1>
+    </header>
 
-  <main class="wheel-area">
-    <div class="pointer" aria-hidden="true"></div>
-    <canvas id="wheelCanvas" width="800" height="800"></canvas>
+    <main class="wheel-area">
+      <div class="pointer"></div>
+      <canvas id="wheelCanvas"></canvas>
+    </main>
+
     <div class="controls">
-      <button id="spinBtn" class="btn">🎯 Lancer</button>
+      <button id="spinBtn" class="btn">⬇️ Lancer</button>
     </div>
-  </main>
 
-  <div class="footer-bar" id="resultBar" style="display:none">
-    Le prochain scribe est : <span id="winnerName">—</span> !
+    <div class="footer-bar" id="resultBar" style="display:none">
+      <span class="winner-badge">Scribe :</span>
+      <span id="winnerName">—</span>
+      <button id="confirmWinnerBtn" class="btn">Valider</button>
+      <button id="closeResultBtn" class="btn">Fermer</button>
+    </div>
   </div>
 
   <aside class="editor">
-    <h2>Participants &amp; dernières dates</h2>
+    <h2>Participants</h2>
     <table>
       <thead>
         <tr>
           <th>Nom</th>
-          <th>Dernier passage</th>
-          <th class="color-cell">Couleur</th>
-          <th class="chance-cell">% chance</th>
-          <th class="action-cell"></th>
+          <th>Date</th>
+          <th>Couleur</th>
+          <th>%</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
-    <button id="addRowBtn" class="btn" style="margin-top:8px;">+ Ajouter</button>
+    <div style="margin-top:10px;">
+      <button id="addRowBtn" class="btn">+ Ajouter</button>
+    </div>
   </aside>
 
   <script>
@@ -90,58 +207,160 @@
     const spinBtn = document.getElementById('spinBtn');
     const rowsTbody = document.getElementById('rows');
     const addRowBtn = document.getElementById('addRowBtn');
+
     const resultBar = document.getElementById('resultBar');
     const winnerNameEl = document.getElementById('winnerName');
+    const confirmWinnerBtn = document.getElementById('confirmWinnerBtn');
+    const closeResultBtn = document.getElementById('closeResultBtn');
 
     function getCssRadius() {
       const v = getComputedStyle(document.documentElement).getPropertyValue('--wheel-radius').trim();
-      const m = v.match(/([\d.]+)px/);
-      return m ? parseFloat(m[1]) : 260;
+      return parseFloat(v);
     }
 
-    function resizeCanvasToRadius() {
+    function resizeCanvas() {
       const r = getCssRadius();
-      const size = r * 2;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.style.width = size + 'px';
-      canvas.style.height = size + 'px';
-      canvas.width = size * dpr;
-      canvas.height = size * dpr;
-      ctx.setTransform(dpr,0,0,dpr,0,0);
+      const size = r*2;
+      canvas.width = size;
+      canvas.height = size;
     }
 
-    let people = [ {name:'Alice',last:'',color:''}, {name:'Benoît',last:'',color:''} ];
-    const DAY=86400000;
-    function daysSince(iso){ if(!iso)return null; const d=new Date(iso+'T00:00:00'); if(isNaN(d))return null; return Math.max(0,Math.floor((Date.now()-d)/DAY)); }
-    function weightFor(iso,max){ const ds=daysSince(iso); return ds===null?max+30:Math.max(1,ds); }
+    let people = [];
+    let slices = [];
 
-    let slices=[]; let rotationDeg=0;
-    function rebuildSlices(){
-      const vals=people.map(p=>daysSince(p.last)).filter(v=>v!==null);
-      const max=vals.length?Math.max(...vals):30;
-      const weights=people.map(p=>weightFor(p.last,max));
-      const total=weights.reduce((a,b)=>a+b,0)||1;
+    function daysSince(iso) {
+      if (!iso) return null;
+      const d = new Date(iso);
+      const now = new Date();
+      return Math.floor((now - d) / (1000*60*60*24));
+    }
+
+    function rebuildSlices() {
+      const dayVals = people.map(p => daysSince(p.last)).filter(v => v!==null);
+      const maxDays = dayVals.length ? Math.max(...dayVals) : 30;
+      const weights = people.map(p => {
+        const ds = daysSince(p.last);
+        return ds===null ? maxDays+30 : Math.max(1, ds);
+      });
+      const total = weights.reduce((a,b)=>a+b,0)||1;
       let cursor=-90;
-      slices=people.map((p,i)=>{const w=weights[i];const ang=w/total*360;const start=cursor;cursor+=ang;return{name:p.name||'—',startDeg:start,endDeg:cursor,percent:w/total*100,color:p.color||`hsl(${i*60} 70% 50%)`};});
+      slices = people.map((p,i)=>{
+        const ang = weights[i]/total*360;
+        const startDeg=cursor, endDeg=cursor+ang;
+        cursor=endDeg;
+        p.chance = ((weights[i]/total)*100).toFixed(1);
+        return {name:p.name,startDeg,endDeg,color:p.color||'#'+Math.floor(Math.random()*16777215).toString(16)};
+      });
     }
 
-    function drawWheel(){const r=getCssRadius();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(r,r);ctx.rotate(rotationDeg*Math.PI/180);slices.forEach(s=>{const a0=s.startDeg*Math.PI/180,a1=s.endDeg*Math.PI/180;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r-8,a0,a1);ctx.closePath();ctx.fillStyle=s.color;ctx.fill();});ctx.restore();}
+    let rotationDeg=0;
+    function drawWheel(){
+      const r = getCssRadius();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.save();
+      ctx.translate(r,r);
+      ctx.rotate(rotationDeg*Math.PI/180);
+      slices.forEach((s,i)=>{
+        const a0=s.startDeg*Math.PI/180;
+        const a1=s.endDeg*Math.PI/180;
+        ctx.beginPath();
+        ctx.moveTo(0,0);
+        ctx.arc(0,0,r-8,a0,a1);
+        ctx.closePath();
+        ctx.fillStyle=s.color;
+        ctx.fill();
+        ctx.save();
+        ctx.rotate((a0+a1)/2);
+        ctx.fillStyle="#fff";
+        ctx.textAlign="right";
+        ctx.font="bold 14px sans-serif";
+        ctx.fillText(s.name.toUpperCase(),r-20,0);
+        ctx.restore();
+      });
+      ctx.restore();
+    }
 
-    function inRange(a,start,end){const norm=x=>(x%360+360)%360;a=norm(a);start=norm(start);end=norm(end);if(start<end)return a>=start&&a<end;return a>=start||a<end;}
-    function winnerForRotation(rot){let pointer=(0-rot)%360;if(pointer<0)pointer+=360;return slices.find(s=>inRange(pointer,s.startDeg,s.endDeg))||slices[slices.length-1];}
+    function spin(){
+      if(!people.length)return;
+      resultBar.style.display='none';
+      const start=performance.now();
+      const initial=rotationDeg;
+      const target=Math.random()*360;
+      const turns=6;
+      const totalDelta=turns*360+target;
+      const duration=5000;
+      requestAnimationFrame(function step(t){
+        const p=Math.min(1,(t-start)/duration);
+        rotationDeg=initial+totalDelta*(1-Math.pow(1-p,3));
+        drawWheel();
+        if(p<1)requestAnimationFrame(step); else{
+          const winner=slices.find(s=>{
+            let angle=(-90-rotationDeg)%360; if(angle<0)angle+=360;
+            return angle>=((s.startDeg%360+360)%360)&&angle<((s.endDeg%360+360)%360);
+          });
+          showWinner(winner?.name||'—');
+        }
+      });
+    }
 
-    function spin(){const start=performance.now(),init=rotationDeg,target=Math.random()*360,turns=6+Math.floor(Math.random()*3),delta=turns*360+target,dur=5000;function step(t){const p=Math.min(1,(t-start)/dur);const ease=1-(--p*p*p*p);rotationDeg=init+delta*ease;drawWheel();if(p<1)requestAnimationFrame(step);else{const w=winnerForRotation(rotationDeg);winnerNameEl.textContent=w.name;resultBar.style.display='flex';}}requestAnimationFrame(step);}
+    function showWinner(name){
+      winnerNameEl.textContent=name;
+      resultBar.style.display='flex';
+    }
 
-    function renderTable(){rowsTbody.innerHTML='';const vals=people.map(p=>daysSince(p.last)).filter(v=>v!==null);const max=vals.length?Math.max(...vals):30;const weights=people.map(p=>weightFor(p.last,max));const total=weights.reduce((a,b)=>a+b,0)||1;people.forEach((p,i)=>{const tr=document.createElement('tr');const td1=document.createElement('td');const n=document.createElement('input');n.value=p.name;n.oninput=()=>{p.name=n.value;rebuildSlices();drawWheel();renderTable();};td1.appendChild(n);const td2=document.createElement('td');const d=document.createElement('input');d.type='date';d.value=p.last;d.onchange=()=>{p.last=d.value;rebuildSlices();drawWheel();renderTable();};td2.appendChild(d);const td3=document.createElement('td');const sw=document.createElement('div');sw.className='swatch';sw.style.background=p.color||`hsl(${i*60} 70% 50%)`;const c=document.createElement('input');c.type='color';c.value='#ff0000';c.style.display='none';sw.onclick=()=>c.click();c.oninput=()=>{p.color=c.value;sw.style.background=c.value;rebuildSlices();drawWheel();};td3.appendChild(sw);td3.appendChild(c);const td4=document.createElement('td');td4.className='chance-cell';td4.textContent=(weights[i]/total*100).toFixed(1)+'%';const td5=document.createElement('td');const btn=document.createElement('button');btn.textContent='×';btn.onclick=()=>{people.splice(i,1);rebuildSlices();drawWheel();renderTable();};td5.appendChild(btn);tr.append(td1,td2,td3,td4,td5);rowsTbody.appendChild(tr);});}
+    function renderTable(){
+      rowsTbody.innerHTML='';
+      people.forEach((p,idx)=>{
+        const tr=document.createElement('tr');
 
-    addRowBtn.onclick=()=>{people.push({name:'',last:'',color:''});rebuildSlices();drawWheel();renderTable();};
-    spinBtn.onclick=spin;
+        const tdName=document.createElement('td');
+        const inpName=document.createElement('input');
+        inpName.type='text'; inpName.value=p.name;
+        inpName.addEventListener('input',()=>{p.name=inpName.value;rebuildSlices();drawWheel();renderTable();});
+        tdName.appendChild(inpName);
 
-    resizeCanvasToRadius();
+        const tdDate=document.createElement('td');
+        const inpDate=document.createElement('input');
+        inpDate.type='date'; inpDate.value=p.last||'';
+        inpDate.addEventListener('change',()=>{p.last=inpDate.value;rebuildSlices();drawWheel();renderTable();});
+        tdDate.appendChild(inpDate);
+
+        const tdColor=document.createElement('td');
+        const inpColor=document.createElement('input');
+        inpColor.type='color'; inpColor.value=p.color||'#cccccc';
+        inpColor.addEventListener('input',()=>{p.color=inpColor.value;drawWheel();});
+        tdColor.appendChild(inpColor);
+
+        const tdChance=document.createElement('td');
+        const inpChance=document.createElement('input');
+        inpChance.className='readonly'; inpChance.readOnly=true; inpChance.value=(p.chance||0)+"%";
+        tdChance.appendChild(inpChance);
+
+        const tdAct=document.createElement('td');
+        const del=document.createElement('button');
+        del.className='iconbtn'; del.innerHTML='×';
+        del.addEventListener('click',()=>{people.splice(idx,1);rebuildSlices();drawWheel();renderTable();});
+        tdAct.appendChild(del);
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdDate);
+        tr.appendChild(tdColor);
+        tr.appendChild(tdChance);
+        tr.appendChild(tdAct);
+        rowsTbody.appendChild(tr);
+      });
+    }
+
+    addRowBtn.addEventListener('click',()=>{people.push({name:'',last:'',color:'#cccccc'});rebuildSlices();drawWheel();renderTable();});
+    spinBtn.addEventListener('click',spin);
+    confirmWinnerBtn.addEventListener('click',()=>{const p=people.find(x=>x.name===winnerNameEl.textContent);if(p){p.last=new Date().toISOString().slice(0,10);}rebuildSlices();drawWheel();renderTable();resultBar.style.display='none';});
+    closeResultBtn.addEventListener('click',()=>{resultBar.style.display='none';});
+
+    resizeCanvas();
+    people=[{name:'Alice',last:'',color:'#f87171'},{name:'Bob',last:'',color:'#60a5fa'}];
     rebuildSlices();
     drawWheel();
     renderTable();
-    window.onresize=()=>{resizeCanvasToRadius();drawWheel();};
   </script>
 </body>
 </html>
