@@ -16,7 +16,13 @@
       --success: #10b981;
     }
 
-    html, body { height: 100%; margin: 0; background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
 
     .wrap { height: 100%; display: grid; grid-template-rows: 1fr; grid-template-columns: 1fr; }
 
@@ -27,31 +33,59 @@
 
     .wheel-area { position: relative; display: grid; place-items: center; height: 100vh; }
 
-    /* Canvas dimensionné via le rayon CSS */
-    #wheelCanvas { width: calc(var(--wheel-radius) * 2); height: calc(var(--wheel-radius) * 2); display: block; filter: drop-shadow(0 24px 40px rgba(0,0,0,.45)); background: conic-gradient(from 0deg, #0d1324 0 25%, #0a0f1f 0 50%, #0d1324 0 75%, #0a0f1f 0 100%); border-radius: 50%; }
+    /* Pile roue + tuile gagnant + bouton, centrés verticalement */
+    .wheel-stack { display: flex; flex-direction: column; align-items: center; }
 
-/* Curseur à droite, orange, collé à la roue (0°) */
-.pointer {
-  position: absolute;
-  left: calc(50% + var(--wheel-radius) - 2px);
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0; height: 0;
-  border-top: 20px solid transparent;
-  border-bottom: 20px solid transparent;
-  border-right: 30px solid var(--accent-orange);
-  filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
-  z-index: 3;
-}
+    /* Canvas dimensionné via le rayon CSS */
+    #wheelCanvas {
+      width: calc(var(--wheel-radius) * 2);
+      height: calc(var(--wheel-radius) * 2);
+      display: block;
+      filter: drop-shadow(0 24px 40px rgba(0,0,0,.45));
+      background: conic-gradient(from 0deg, #0d1324 0 25%, #0a0f1f 0 50%, #0d1324 0 75%, #0a0f1f 0 100%);
+      border-radius: 50%;
+    }
+
+    /* Curseur à droite, orange, collé à la roue (0°), réaligné précisément en JS */
+    .pointer {
+      position: absolute;
+      left: calc(50% + var(--wheel-radius) - 2px); /* valeur de secours; JS affine */
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 20px solid transparent;
+      border-bottom: 20px solid transparent;
+      border-right: 30px solid var(--accent-orange); /* triangle pointant vers la gauche (vers la roue) */
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
+      z-index: 3;
+    }
 
     /* Bouton Lancer sous la roue */
     .controls { margin-top: 14px; display: flex; gap: 12px; align-items: center; justify-content: center; }
-    .btn { appearance: none; border: 1px solid #1f2a44; background: linear-gradient(180deg, #2563eb, #1d4ed8); color: var(--text); padding: 12px 16px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: transform .06s ease, box-shadow .12s ease, background .2s ease; box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25); }
+    .btn {
+      appearance: none;
+      border: 1px solid #1f2a44;
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .06s ease, box-shadow .12s ease, background .2s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25);
+    }
     .btn:hover { transform: translateY(-1px); }
     .btn:active { transform: translateY(1px) scale(.98); }
 
     /* Panneau d'édition au milieu droit */
-    .editor { position: fixed; top: 50%; left: 16px; transform: translateY(-50%); width: min(520px, 38vw); max-width: 520px; max-height: 70vh; overflow-y: auto; overflow-x: hidden; background: var(--panel); backdrop-filter: blur(8px); border: 1px solid #213052; border-radius: 16px; padding: 12px; box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4; }
+    .editor {
+      position: fixed; top: 50%; left: 16px; transform: translateY(-50%);
+      width: min(520px, 38vw); max-width: 520px; max-height: 70vh;
+      overflow-y: auto; overflow-x: hidden;
+      background: var(--panel); backdrop-filter: blur(8px);
+      border: 1px solid #213052; border-radius: 16px; padding: 12px;
+      box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4;
+    }
     .editor h2 { font-size: 14px; margin: 0 0 8px 0; color: var(--muted); font-weight: 700; letter-spacing: .3px; }
 
     table { width: 100%; border-collapse: collapse; }
@@ -59,17 +93,19 @@
     tbody td { padding: 6px 8px; vertical-align: middle; }
     tbody tr { border-top: 1px dashed #22304f; }
 
-    input[type="text"], input[type="date"], input[type="color"] { width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text); border: 1px solid #26324e; padding: 8px 10px; border-radius: 10px; outline: none; }
+    input[type="text"], input[type="date"], input[type="color"] {
+      width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text);
+      border: 1px solid #26324e; padding: 8px 10px; border-radius: 10px; outline: none;
+    }
 
-/* Hauteur harmonisée pour texte et date */
-input[type="text"],
-input[type="date"] {
-  min-height: 46px;     /* même hauteur */
-  padding-top: 10px;
-  padding-bottom: 10px;
-  line-height: normal;  /* évite le rognage du placeholder selon le navigateur */
-}
-
+    /* Hauteur harmonisée pour texte et date */
+    input[type="text"],
+    input[type="date"] {
+      min-height: 44px;     /* même hauteur */
+      padding-top: 10px;
+      padding-bottom: 10px;
+      line-height: normal;  /* évite le rognage du placeholder selon le navigateur */
+    }
 
     .color-cell { width: 56px; }
     .swatch { width: 28px; height: 20px; border-radius: 6px; border: 1px solid #233250; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); cursor: pointer; }
@@ -78,28 +114,38 @@ input[type="date"] {
     .iconbtn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
     .iconbtn:hover { color: #e2e8f0; }
 
-    .footer-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: var(--panel); padding: 10px 12px; border-radius: 999px; border: 1px solid #20304e; box-shadow: 0 14px 44px rgba(0,0,0,.45); font-size: 14px; }
+    /* Tuile gagnant entre la roue et le bouton (grosse) */
+    .winner-bar {
+      margin-top: 18px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid #20304e;
+      border-radius: 18px;
+      padding: 20px 26px;
+      box-shadow: 0 18px 48px rgba(0,0,0,.45);
+      max-width: min(92vw, 640px);
+    }
+    .winner-text {
+      font-size: clamp(20px, 2.6vw, 28px);
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
 
-    .winner-badge { font-weight: 800; }
-/* Tuile winner plus grande */
-#resultBar {
-  padding: 16px 20px;    /* plus d'air */
-  font-size: 18px;       /* texte plus grand */
-}
+    /* Bouton Lancer la roue plus grand */
+    #spinBtn {
+      padding: 18px 26px;
+      font-size: 20px;
+      border-radius: 16px;
+    }
 
-.winner-text {
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-
-/* Bouton Lancer la roue plus grand */
-#spinBtn {
-  padding: 16px 22px;
-  font-size: 18px;
-  border-radius: 14px;
-}
-
-    @media (max-width: 980px) { :root { --wheel-radius: 200px; } .editor { right: 8px; width: min(92vw, 520px); } }
+    @media (max-width: 980px) {
+      :root { --wheel-radius: 200px; }
+      .editor { right: 8px; width: min(92vw, 520px); }
+    }
   </style>
 </head>
 <body>
@@ -110,45 +156,52 @@ input[type="date"] {
 
     <main class="wheel-area">
       <div class="pointer" aria-hidden="true"></div>
-      <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
-      <div class="controls">
-        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer la roue !</button>
+
+      <div class="wheel-stack">
+        <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
+
+        <!-- Tuile gagnant entre la roue et le bouton -->
+        <div id="resultBar" class="winner-bar" style="display:none">
+          <div id="winnerText" class="winner-text" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="controls">
+          <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer la roue !</button>
+        </div>
       </div>
     </main>
 
-<div class="footer-bar" id="resultBar" style="display:none">
-  <div id="winnerText" class="winner-text" role="status" aria-live="polite"></div>
-</div>
-
-  <!-- Éditeur : tableau au milieu droit, colonnes Nom | Dernier passage | Couleur | % | × -->
-  <aside class="editor" aria-label="Éditeur des participants">
-    <h2>Participants &amp; dernières dates</h2>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:44%">Nom</th>
-          <th style="width:28%">Dernier passage</th>
-          <th class="color-cell">Couleur</th>
-          <th class="chance-cell">% chance</th>
-          <th class="action-cell"></th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div style="display:flex; gap:8px; margin-top:10px;">
-      <button id="addRowBtn" class="btn" title="Ajouter un participant">+ Ajouter</button>
-      <button id="importCsvBtn" class="btn" title="Importer depuis un CSV (;)">📥 Importer CSV</button>
-      <button id="exportCsvBtn" class="btn" title="Exporter en CSV (;)">📤 Exporter CSV</button>
-      <input id="importFile" type="file" accept=".csv,text/csv" style="display:none" />
-    </div>
-  </aside>
+    <!-- Éditeur : tableau au milieu droit, colonnes Nom | Dernier passage | Couleur | % | × -->
+    <aside class="editor" aria-label="Éditeur des participants">
+      <h2>Participants &amp; dernières dates</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:44%">Nom</th>
+            <th style="width:28%">Dernier passage</th>
+            <th class="color-cell">Couleur</th>
+            <th class="chance-cell">% chance</th>
+            <th class="action-cell"></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="addRowBtn" class="btn" title="Ajouter un participant">+ Ajouter</button>
+        <button id="importCsvBtn" class="btn" title="Importer depuis un CSV (;)">📥 Importer CSV</button>
+        <button id="exportCsvBtn" class="btn" title="Exporter en CSV (;)">📤 Exporter CSV</button>
+        <input id="importFile" type="file" accept=".csv,text/csv" style="display:none" />
+      </div>
+    </aside>
+  </div>
 
   <script>
     /*********************************************************
      * Roue du Scribe — logique (v2)
-     * - Curseur à DROITE (0°)
+     * - Curseur à DROITE (0°), aligné précisément sur la roue
      * - Pourcentages affichés dans le tableau (lecture seule)
      * - Couleur par personne (modifiable via color picker)
+     * - Easing de fin avec suspense
      *********************************************************/
 
     const canvas = document.getElementById('wheelCanvas');
@@ -160,11 +213,9 @@ input[type="date"] {
     const exportCsvBtn = document.getElementById('exportCsvBtn');
     const importFileInput = document.getElementById('importFile');
 
-
     const resultBar = document.getElementById('resultBar');
-const winnerTextEl = document.getElementById('winnerText');
+    const winnerTextEl = document.getElementById('winnerText');
     const pointerEl = document.querySelector('.pointer');
-
 
     // Rayon dérivé du CSS (en px)
     function getCssRadius() {
@@ -270,31 +321,30 @@ const winnerTextEl = document.getElementById('winnerText');
         // séparateurs
         ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1.25; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-8, a0, a1); ctx.stroke();
 
-// label (texte noir avec contour blanc, sans bandeau)
-ctx.save();
-const mid = (a0 + a1)/2;
-ctx.rotate(mid);
-ctx.textAlign = 'right';
-ctx.textBaseline = 'middle';
-ctx.font = '800 14px system-ui, sans-serif';
+        // label (texte noir avec contour blanc, sans bandeau)
+        ctx.save();
+        const mid = (a0 + a1)/2;
+        ctx.rotate(mid);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = '800 14px system-ui, sans-serif';
 
-const label = (s.name || '—').toUpperCase();
+        const label = (s.name || '—').toUpperCase();
 
-// contour blanc
-ctx.lineJoin = 'round';
-ctx.miterLimit = 2;
-ctx.lineWidth = 3;
-ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        // contour blanc
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
 
-// remplissage noir
-ctx.fillStyle = '#000000';
+        // remplissage noir
+        ctx.fillStyle = '#000000';
 
-// position: 24px à l'intérieur du bord
-ctx.strokeText(label, r - 24, 0);
-ctx.fillText(label,  r - 24, 0);
+        // position: 24px à l'intérieur du bord
+        ctx.strokeText(label, r - 24, 0);
+        ctx.fillText(label,  r - 24, 0);
 
-ctx.restore();
-
+        ctx.restore();
       });
 
       // Moyeu
@@ -315,29 +365,42 @@ ctx.restore();
     }
     function inRange(a, start, end) { const norm = x => (x%360+360)%360; a = norm(a); start = norm(start); end = norm(end); if (start < end) return a >= start && a < end; return a >= start || a < end; }
 
-    // Animation de spin
+    // Animation de spin (avec fin "suspense")
     let animId = null;
+    let jitterSeed = Math.random() * Math.PI * 2;
+    let wobbleFreq = 18 + Math.random() * 6;
+
     function spin() {
       if (!people.length) return;
       resultBar.style.display = 'none';
       const start = performance.now();
       const initial = rotationDeg;
       const target = Math.random() * 360;
-      const turns = 6 + Math.floor(Math.random()*3);
+      const turns = 6 + Math.floor(Math.random()*5);      // 6..10 tours
       const totalDelta = turns*360 + target;
-      const duration = 5200 + Math.random()*1400;
+      const duration = 5600 + Math.random()*2600;         // 5.6..8.2 s
 
       cancelAnimationFrame(animId);
       animId = requestAnimationFrame(function step(t){
         const p = Math.min(1, (t - start)/duration);
-        const ease = backOut(p);
+        const ease = suspenseEase(p);
         rotationDeg = initial + totalDelta * ease;
         drawWheel();
         if (p < 1) { animId = requestAnimationFrame(step); }
         else { const w = winnerForRotation(rotationDeg); showWinner(w.name); flashSlice(w); }
       });
     }
-    function backOut(t) { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+
+    // Easing avec micro-variations en fin de course pour plus de suspense
+    function suspenseEase(t){
+      const e = 1 - Math.pow(1 - t, 4.5); // ease-out fort
+      const jStart = 0.82;
+      if (t <= jStart) return e;
+      const x = (t - jStart) / (1 - jStart);       // 0..1 sur la dernière tranche
+      const amp = 0.03 * (1 - x);                  // amplitude qui décroît
+      const wobble = Math.sin(wobbleFreq * Math.PI * x + jitterSeed);
+      return Math.min(1, Math.max(0, e - amp * 0.5 + amp * wobble));
+    }
 
     function flashSlice(slice) {
       const r = getCssRadius();
@@ -355,12 +418,11 @@ ctx.restore();
       requestAnimationFrame(step);
     }
 
-function showWinner(name){
-  const n = name || '—';
-  winnerTextEl.textContent = `Le prochain scribe est « ${n} », félicitations ! 🎉`;
-  resultBar.style.display = 'flex';
-}
-
+    function showWinner(name){
+      const n = name || '—';
+      winnerTextEl.textContent = `Le prochain scribe est « ${n} », félicitations ! 🎉`;
+      resultBar.style.display = 'flex';
+    }
 
     // --- Tableau ---
     function renderTable() {
@@ -437,140 +499,139 @@ function showWinner(name){
     positionPointer();
     window.addEventListener('resize', () => { resizeCanvasToRadius(); drawWheel(); positionPointer(); });
 
-
     /* === Import/Export CSV (séparateur ;) === */
+    function exportCSV() {
+      const header = ['Nom', 'Dernier passage', 'Couleur'];
+      const rows = people.map(p => [
+        p.name || '',
+        p.last || '',
+        (p.color && p.color.trim()) || ''
+      ]);
+      const csv = [header, ...rows].map(r => r.map(csvEscape).join(';')).join('\r\n');
 
-function exportCSV() {
-  const header = ['Nom', 'Dernier passage', 'Couleur'];
-  const rows = people.map(p => [
-    p.name || '',
-    p.last || '',
-    (p.color && p.color.trim()) || ''
-  ]);
-  const csv = [header, ...rows].map(r => r.map(csvEscape).join(';')).join('\r\n');
-
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'participants.csv';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
-}
-
-function csvEscape(val) {
-  val = String(val ?? '');
-  return /[;"\n\r]/.test(val) ? '"' + val.replace(/"/g, '""') + '"' : val;
-}
-
-function handleImportCSV(e) {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const text = String(reader.result);
-      const rows = parseCSV(text, ';');
-      if (!rows.length) return;
-
-      let startIdx = 0;
-      let nameIdx = 0, dateIdx = 1, colorIdx = 2;
-
-      // Détection d'en-têtes éventuels
-      const header = rows[0].map(h => h.trim().toLowerCase());
-      if (header.some(h => ['nom', 'dernier passage', 'couleur'].some(k => h.includes(k)))) {
-        startIdx = 1;
-        nameIdx = header.findIndex(h => h.startsWith('nom'));       if (nameIdx < 0) nameIdx = 0;
-        dateIdx = header.findIndex(h => h.startsWith('dernier'));   if (dateIdx < 0) dateIdx = 1;
-        colorIdx = header.findIndex(h => h.startsWith('couleur'));  if (colorIdx < 0) colorIdx = 2;
-      }
-
-      const imported = [];
-      for (let i = startIdx; i < rows.length; i++) {
-        const r = rows[i];
-        if (!r || !r.length) continue;
-        const name = (r[nameIdx] || '').trim();
-        const last = (r[dateIdx] || '').trim();
-        const color = (r[colorIdx] || '').trim();
-        if (!name) continue;
-        imported.push({ name, last: normalizeDate(last), color });
-      }
-
-      if (imported.length) {
-        people = imported;
-        onDataChange();
-        renderTable();
-      }
-    } finally {
-      importFileInput.value = '';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'participants.csv';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
     }
-  };
-  reader.readAsText(file, 'utf-8');
-}
 
-// Parse CSV simple avec guillemets et séparateur configurable (par défaut ;)
-function parseCSV(text, delimiter = ';') {
-  const rows = [];
-  let cur = '', row = [];
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') { cur += '"'; i++; }
-        else { inQuotes = false; }
-      } else {
-        cur += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === delimiter) {
-        row.push(cur); cur = '';
-      } else if (ch === '\n') {
-        row.push(cur); rows.push(row); row = []; cur = '';
-      } else if (ch === '\r') {
-        // ignore CR
-      } else {
-        cur += ch;
-      }
+    function csvEscape(val) {
+      val = String(val ?? '');
+      return /[;"\n\r]/.test(val) ? '"' + val.replace(/"/g, '""') + '"' : val;
     }
-  }
-  if (cur.length > 0 || row.length > 0) {
-    row.push(cur); rows.push(row);
-  }
-  return rows;
-}
 
-// Normalise quelques formats de date vers YYYY-MM-DD (vide si non reconnu)
-function normalizeDate(s) {
-  if (!s) return '';
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return s;
-  const fr = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-  if (fr) {
-    const d = String(fr[1]).padStart(2, '0');
-    const m = String(fr[2]).padStart(2, '0');
-    const y = fr[3];
-    return `${y}-${m}-${d}`;
-  }
-  return '';
-}
+    function handleImportCSV(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
 
-function positionPointer() {
-  const areaRect = document.querySelector('.wheel-area').getBoundingClientRect();
-  const canvasRect = canvas.getBoundingClientRect();
-  const triangleWidth = 30; // doit correspondre au border-right ci-dessus
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result);
+          const rows = parseCSV(text, ';');
+          if (!rows.length) return;
 
-  // Tip de la flèche au bord droit de la roue
-  pointerEl.style.left = (canvasRect.right - areaRect.left - triangleWidth) + 'px';
-  // Alignement vertical sur le centre exact du canvas
-  pointerEl.style.top = (canvasRect.top - areaRect.top + canvasRect.height / 2) + 'px';
-  pointerEl.style.transform = 'translateY(-50%)';
-}
+          let startIdx = 0;
+          let nameIdx = 0, dateIdx = 1, colorIdx = 2;
+
+          // Détection d'en-têtes éventuels
+          const header = rows[0].map(h => h.trim().toLowerCase());
+          if (header.some(h => ['nom', 'dernier passage', 'couleur'].some(k => h.includes(k)))) {
+            startIdx = 1;
+            nameIdx = header.findIndex(h => h.startsWith('nom'));       if (nameIdx < 0) nameIdx = 0;
+            dateIdx = header.findIndex(h => h.startsWith('dernier'));   if (dateIdx < 0) dateIdx = 1;
+            colorIdx = header.findIndex(h => h.startsWith('couleur'));  if (colorIdx < 0) colorIdx = 2;
+          }
+
+          const imported = [];
+          for (let i = startIdx; i < rows.length; i++) {
+            const r = rows[i];
+            if (!r || !r.length) continue;
+            const name = (r[nameIdx] || '').trim();
+            const last = (r[dateIdx] || '').trim();
+            const color = (r[colorIdx] || '').trim();
+            if (!name) continue;
+            imported.push({ name, last: normalizeDate(last), color });
+          }
+
+          if (imported.length) {
+            people = imported;
+            onDataChange();
+            renderTable();
+          }
+        } finally {
+          importFileInput.value = '';
+        }
+      };
+      reader.readAsText(file, 'utf-8');
+    }
+
+    // Parse CSV simple avec guillemets et séparateur configurable (par défaut ;)
+    function parseCSV(text, delimiter = ';') {
+      const rows = [];
+      let cur = '', row = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { cur += '"'; i++; }
+            else { inQuotes = false; }
+          } else {
+            cur += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === delimiter) {
+            row.push(cur); cur = '';
+          } else if (ch === '\n') {
+            row.push(cur); rows.push(row); row = []; cur = '';
+          } else if (ch === '\r') {
+            // ignore CR
+          } else {
+            cur += ch;
+          }
+        }
+      }
+      if (cur.length > 0 || row.length > 0) {
+        row.push(cur); rows.push(row);
+      }
+      return rows;
+    }
+
+    // Normalise quelques formats de date vers YYYY-MM-DD (vide si non reconnu)
+    function normalizeDate(s) {
+      if (!s) return '';
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return s;
+      const fr = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+      if (fr) {
+        const d = String(fr[1]).padStart(2, '0');
+        const m = String(fr[2]).padStart(2, '0');
+        const y = fr[3];
+        return `${y}-${m}-${d}`;
+      }
+      return '';
+    }
+
+    // Aligne la flèche au bord droit et au centre vertical du canvas
+    function positionPointer() {
+      const areaRect = document.querySelector('.wheel-area').getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const triangleWidth = 30; // doit correspondre au border-right de .pointer
+
+      // Tip de la flèche au bord droit de la roue
+      pointerEl.style.left = (canvasRect.right - areaRect.left - triangleWidth) + 'px';
+      // Alignement vertical sur le centre exact du canvas
+      pointerEl.style.top = (canvasRect.top - areaRect.top + canvasRect.height / 2) + 'px';
+      pointerEl.style.transform = 'translateY(-50%)';
+    }
 
     // Polyfill roundRect
     if (!CanvasRenderingContext2D.prototype.roundRect) {
