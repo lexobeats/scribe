@@ -39,7 +39,7 @@
   width: 0; height: 0;
   border-top: 20px solid transparent;
   border-bottom: 20px solid transparent;
-  border-left: 30px solid var(--accent-orange);
+  border-right: 30px solid var(--accent-orange);
   filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
   z-index: 3;
 }
@@ -60,6 +60,16 @@
     tbody tr { border-top: 1px dashed #22304f; }
 
     input[type="text"], input[type="date"], input[type="color"] { width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text); border: 1px solid #26324e; padding: 8px 10px; border-radius: 10px; outline: none; }
+
+/* Hauteur harmonisée pour texte et date */
+input[type="text"],
+input[type="date"] {
+  min-height: 44px;     /* même hauteur */
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: normal;  /* évite le rognage du placeholder selon le navigateur */
+}
+
 
     .color-cell { width: 56px; }
     .swatch { width: 28px; height: 20px; border-radius: 6px; border: 1px solid #233250; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); cursor: pointer; }
@@ -142,6 +152,8 @@
     const winnerNameEl = document.getElementById('winnerName');
     const confirmWinnerBtn = document.getElementById('confirmWinnerBtn');
     const closeResultBtn = document.getElementById('closeResultBtn');
+    const pointerEl = document.querySelector('.pointer');
+
 
     // Rayon dérivé du CSS (en px)
     function getCssRadius() {
@@ -247,18 +259,31 @@
         // séparateurs
         ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1.25; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-8, a0, a1); ctx.stroke();
 
-        // label
-        ctx.save();
-        const mid = (a0 + a1)/2;
-        ctx.rotate(mid);
-        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-        ctx.font = '700 14px system-ui, sans-serif';
-        // Bandeau clair
-        ctx.beginPath(); ctx.roundRect( -16, -22, r-60, 28, 10 ); ctx.fillStyle = 'rgba(255,255,255,.82)'; ctx.fill();
-        ctx.fillStyle = '#0b1220';
-        const label = (s.name || '—').toUpperCase();
-        ctx.fillText(label, r-72, -8);
-        ctx.restore();
+// label (texte noir avec contour blanc, sans bandeau)
+ctx.save();
+const mid = (a0 + a1)/2;
+ctx.rotate(mid);
+ctx.textAlign = 'right';
+ctx.textBaseline = 'middle';
+ctx.font = '800 14px system-ui, sans-serif';
+
+const label = (s.name || '—').toUpperCase();
+
+// contour blanc
+ctx.lineJoin = 'round';
+ctx.miterLimit = 2;
+ctx.lineWidth = 3;
+ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+
+// remplissage noir
+ctx.fillStyle = '#000000';
+
+// position: 24px à l'intérieur du bord
+ctx.strokeText(label, r - 24, 0);
+ctx.fillText(label,  r - 24, 0);
+
+ctx.restore();
+
       });
 
       // Moyeu
@@ -401,7 +426,9 @@
     rebuildSlices();
     drawWheel();
     renderTable();
-    window.addEventListener('resize', () => { resizeCanvasToRadius(); drawWheel(); });
+    positionPointer();
+    window.addEventListener('resize', () => { resizeCanvasToRadius(); drawWheel(); positionPointer(); });
+
 
     /* === Import/Export CSV (séparateur ;) === */
 
@@ -523,6 +550,18 @@ function normalizeDate(s) {
     return `${y}-${m}-${d}`;
   }
   return '';
+}
+
+function positionPointer() {
+  const areaRect = document.querySelector('.wheel-area').getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const triangleWidth = 30; // doit correspondre au border-right ci-dessus
+
+  // Tip de la flèche au bord droit de la roue
+  pointerEl.style.left = (canvasRect.right - areaRect.left - triangleWidth) + 'px';
+  // Alignement vertical sur le centre exact du canvas
+  pointerEl.style.top = (canvasRect.top - areaRect.top + canvasRect.height / 2) + 'px';
+  pointerEl.style.transform = 'translateY(-50%)';
 }
 
     // Polyfill roundRect
