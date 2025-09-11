@@ -64,7 +64,7 @@
 /* Hauteur harmonisée pour texte et date */
 input[type="text"],
 input[type="date"] {
-  min-height: 44px;     /* même hauteur */
+  min-height: 46px;     /* même hauteur */
   padding-top: 10px;
   padding-bottom: 10px;
   line-height: normal;  /* évite le rognage du placeholder selon le navigateur */
@@ -81,6 +81,23 @@ input[type="date"] {
     .footer-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: var(--panel); padding: 10px 12px; border-radius: 999px; border: 1px solid #20304e; box-shadow: 0 14px 44px rgba(0,0,0,.45); font-size: 14px; }
 
     .winner-badge { font-weight: 800; }
+/* Tuile winner plus grande */
+#resultBar {
+  padding: 16px 20px;    /* plus d'air */
+  font-size: 18px;       /* texte plus grand */
+}
+
+.winner-text {
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+
+/* Bouton Lancer la roue plus grand */
+#spinBtn {
+  padding: 16px 22px;
+  font-size: 18px;
+  border-radius: 14px;
+}
 
     @media (max-width: 980px) { :root { --wheel-radius: 200px; } .editor { right: 8px; width: min(92vw, 520px); } }
   </style>
@@ -95,17 +112,13 @@ input[type="date"] {
       <div class="pointer" aria-hidden="true"></div>
       <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
       <div class="controls">
-        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer</button>
+        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer la roue !</button>
       </div>
     </main>
 
-    <div class="footer-bar" id="resultBar" style="display:none">
-      <span class="winner-badge">Scribe :</span>
-      <span id="winnerName">—</span>
-      <button id="confirmWinnerBtn" class="btn" style="background:linear-gradient(180deg,#10b981,#059669);border-color:#0f5f4b" title="Marquer comme passé aujourd'hui">Valider</button>
-      <button id="closeResultBtn" class="btn" style="background:transparent;border-color:#334155;">Fermer</button>
-    </div>
-  </div>
+<div class="footer-bar" id="resultBar" style="display:none">
+  <div id="winnerText" class="winner-text" role="status" aria-live="polite"></div>
+</div>
 
   <!-- Éditeur : tableau au milieu droit, colonnes Nom | Dernier passage | Couleur | % | × -->
   <aside class="editor" aria-label="Éditeur des participants">
@@ -149,9 +162,7 @@ input[type="date"] {
 
 
     const resultBar = document.getElementById('resultBar');
-    const winnerNameEl = document.getElementById('winnerName');
-    const confirmWinnerBtn = document.getElementById('confirmWinnerBtn');
-    const closeResultBtn = document.getElementById('closeResultBtn');
+const winnerTextEl = document.getElementById('winnerText');
     const pointerEl = document.querySelector('.pointer');
 
 
@@ -344,7 +355,12 @@ ctx.restore();
       requestAnimationFrame(step);
     }
 
-    function showWinner(name){ winnerNameEl.textContent = name || '—'; resultBar.style.display = 'flex'; }
+function showWinner(name){
+  const n = name || '—';
+  winnerTextEl.textContent = `Le prochain scribe est « ${n} », félicitations ! 🎉`;
+  resultBar.style.display = 'flex';
+}
+
 
     // --- Tableau ---
     function renderTable() {
@@ -405,14 +421,6 @@ ctx.restore();
     function onDataChange() { rebuildSlices(); save(); drawWheel(); renderTable(); }
 
     addRowBtn.addEventListener('click', () => { people.push({ name: '', last: '', color: '' }); onDataChange(); });
-
-    confirmWinnerBtn.addEventListener('click', () => {
-      const name = winnerNameEl.textContent; const today = new Date().toISOString().slice(0,10);
-      const p = people.find(x => (x.name||'—') === name);
-      if (p) { p.last = today; onDataChange(); }
-      resultBar.style.display = 'none';
-    });
-    closeResultBtn.addEventListener('click', () => { resultBar.style.display = 'none'; });
 
     window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); spin(); } });
     spinBtn.addEventListener('click', spin);
