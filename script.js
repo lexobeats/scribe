@@ -227,7 +227,7 @@ function renderTable() {
     // Nom
     const tdName = document.createElement('td');
     const inpName = document.createElement('input'); inpName.type = 'text'; inpName.value = p.name; inpName.placeholder = 'Nom';
-    inpName.addEventListener('input', () => { p.name = inpName.value; onDataChange({ rerenderTable: false });});
+    inpName.addEventListener('input', () => { p.name = inpName.value; onDataChange(); });
     tdName.appendChild(inpName);
 
     // Dernier passage
@@ -239,11 +239,10 @@ function renderTable() {
     // Couleur (swatch + color input)
     const tdColor = document.createElement('td'); tdColor.className = 'color-cell';
     const sw = document.createElement('div'); sw.className = 'swatch'; sw.style.background = (p.color && p.color.trim()) || defaultColor(idx, people.length);
-colorInput.addEventListener('input', () => { 
-  p.color = colorInput.value; 
-  sw.style.background = p.color; 
-  onDataChange({ rerenderTable: false }); // pas de re-render table pour garder le focus
-});
+    const colorInput = document.createElement('input'); colorInput.type = 'color'; colorInput.value = toHexColor(sw.style.background);
+    colorInput.style.display = 'none';
+    sw.addEventListener('click', () => colorInput.click());
+    colorInput.addEventListener('input', () => { p.color = colorInput.value; sw.style.background = p.color; onDataChange(); });
     tdColor.appendChild(sw); tdColor.appendChild(colorInput);
 
     // % chance (lecture seule)
@@ -269,16 +268,11 @@ function toHexColor(cssColor){
   return `#${r}${g}${b}`;
 }
 
-function onDataChange(opts = { rerenderTable: true }) {
-  rebuildSlices();
-  save();
-  drawWheel();
-  if (opts.rerenderTable) renderTable();
-}
-
+function onDataChange() { rebuildSlices(); save(); drawWheel(); renderTable(); }
 
 addRowBtn.addEventListener('click', () => { people.push({ name: '', last: '', color: '' }); onDataChange(); });
 
+window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); spin(); } });
 spinBtn.addEventListener('click', spin);
 exportCsvBtn.addEventListener('click', exportCSV);
 importCsvBtn.addEventListener('click', () => importFileInput.click());
