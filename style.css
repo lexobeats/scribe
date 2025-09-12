@@ -1,0 +1,126 @@
+:root {
+  --wheel-radius: 260px;         /* ✅ Rayon de la roue défini en CSS */
+  --accent: #3b82f6;
+  --accent-orange: #f59e0b;      /* curseur */
+  --bg: #0b1220;
+  --panel: #0f172aee;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --success: #10b981;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: radial-gradient(1200px 600px at 20% 10%, #0b1220 0%, #060913 60%, #030712 100%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.wrap { height: 100%; display: grid; grid-template-rows: 1fr; grid-template-columns: 1fr; }
+
+/* Titre centré en haut, avec animation cartoonesque */
+header { position: fixed; top: 8px; left: 0; right: 0; display: flex; justify-content: center; z-index: 5; pointer-events: none; }
+h1 { pointer-events: auto; font-size: clamp(28px, 4.6vw, 54px); margin: 0; letter-spacing: .3px; font-weight: 900; text-shadow: 0 4px 22px rgba(0,0,0,.45); animation: puff 2.4s ease-in-out infinite alternate; }
+@keyframes puff { 0% { transform: scale(0.98); } 100% { transform: scale(1.06); } }
+
+.wheel-area { position: relative; display: grid; place-items: center; height: 100vh; }
+
+/* Canvas dimensionné via le rayon CSS */
+#wheelCanvas {
+  width: calc(var(--wheel-radius) * 2);
+  height: calc(var(--wheel-radius) * 2);
+  display: block;
+  filter: drop-shadow(0 24px 40px rgba(0,0,0,.45));
+  background: conic-gradient(from 0deg, #0d1324 0 25%, #0a0f1f 0 50%, #0d1324 0 75%, #0a0f1f 0 100%);
+  border-radius: 50%;
+}
+
+/* Curseur à droite, orange, collé à la roue (0°) */
+.pointer {
+  position: absolute;
+  left: calc(50% + var(--wheel-radius) - 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0; height: 0;
+  border-top: 20px solid transparent;
+  border-bottom: 20px solid transparent;
+  border-right: 30px solid var(--accent-orange);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.55));
+  z-index: 3;
+}
+
+/* Bouton Lancer sous la roue */
+.controls { margin-top: 14px; display: flex; gap: 12px; align-items: center; justify-content: center; }
+.btn {
+  appearance: none;
+  border: 1px solid #1f2a44;
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .12s ease, background .2s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,.35) inset, 0 2px 8px rgba(0,0,0,.25);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(1px) scale(.98); }
+
+/* Panneau d'édition au milieu droit */
+.editor {
+  position: fixed; top: 50%; left: 16px; transform: translateY(-50%);
+  width: min(520px, 38vw); max-width: 520px; max-height: 70vh;
+  overflow-y: auto; overflow-x: hidden;
+  background: var(--panel); backdrop-filter: blur(8px);
+  border: 1px solid #213052; border-radius: 16px; padding: 12px;
+  box-shadow: 0 14px 44px rgba(0,0,0,.45); z-index: 4;
+}
+.editor h2 { font-size: 14px; margin: 0 0 8px 0; color: var(--muted); font-weight: 700; letter-spacing: .3px; }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700; padding: 6px 8px; }
+tbody td { padding: 6px 8px; vertical-align: middle; }
+tbody tr { border-top: 1px dashed #22304f; }
+
+input[type="text"], input[type="date"], input[type="color"] {
+  width: 100%; box-sizing: border-box; background: #0b1222; color: var(--text);
+  border: 1px solid #26324e; padding: 8px 10px; border-radius: 10px; outline: none;
+}
+
+/* Hauteur harmonisée pour texte et date */
+input[type="text"],
+input[type="date"] {
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: normal;
+}
+
+.color-cell { width: 56px; }
+.swatch { width: 28px; height: 20px; border-radius: 6px; border: 1px solid #233250; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); cursor: pointer; }
+.chance-cell { width: 84px; font-variant-numeric: tabular-nums; text-align: right; color: #e2e8f0; font-weight: 700; }
+.action-cell { width: 40px; text-align: right; }
+.iconbtn { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
+.iconbtn:hover { color: #e2e8f0; }
+
+/* Barre winner en bas (fixe) */
+.footer-bar {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; align-items: center;
+  background: var(--panel); padding: 10px 12px; border-radius: 999px;
+  border: 1px solid #20304e; box-shadow: 0 14px 44px rgba(0,0,0,.45);
+  font-size: 14px;
+}
+
+/* Tuile winner plus grande */
+#resultBar { padding: 16px 20px; font-size: 18px; }
+.winner-text { font-weight: 900; letter-spacing: .2px; }
+
+/* Bouton Lancer la roue plus grand */
+#spinBtn { padding: 16px 22px; font-size: 18px; border-radius: 14px; }
+
+@media (max-width: 980px) {
+  :root { --wheel-radius: 200px; }
+  .editor { right: 8px; width: min(92vw, 520px); }
+}
