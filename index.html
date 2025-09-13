@@ -3,34 +3,39 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Roue du Scribe — Équipe</title>
+  <title>La roue du Scribe du V1</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Roue du Scribe</h1>
+      <h1>La roue du Scribe du V1 ! 🧙‍♂️</h1>
+
     </header>
 
     <main class="wheel-area">
+      <!-- Curseur et roue -->
       <div class="pointer" aria-hidden="true"></div>
       <canvas id="wheelCanvas" width="800" height="800" aria-label="Roue de sélection du scribe" role="img"></canvas>
+
+      <!-- Chip du vainqueur AU-DESSUS du bouton (overlay, ne pousse rien) -->
+      <div id="resultBar" class="result-bar" style="display:none">
+        <div id="winnerText" class="winner-text" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Bouton Lancer -->
       <div class="controls">
-        <button id="spinBtn" class="btn" aria-label="Lancer la roue (Espace)">🎯 Lancer la roue !</button>
+        <button id="spinBtn" class="btn btn-blue" aria-label="Lancer la roue (Espace)">🎯 Lancer la roue !</button>
       </div>
     </main>
 
-    <div class="footer-bar" id="resultBar" style="display:none">
-      <div id="winnerText" class="winner-text" role="status" aria-live="polite"></div>
-    </div>
-
-    <!-- Éditeur : tableau au milieu droit, colonnes Nom | Dernier passage | Couleur | % | × -->
+    <!-- Éditeur -->
     <aside class="editor" aria-label="Éditeur des participants">
-      <h2>Participants &amp; dernières dates</h2>
+      <h2>Participants &amp; dernières dates de passage</h2>
       <table>
         <thead>
           <tr>
-            <th style="width:44%">Nom</th>
+            <th style="width:44%">Prénom</th>
             <th style="width:28%">Dernier passage</th>
             <th class="color-cell">Couleur</th>
             <th class="chance-cell">% chance</th>
@@ -40,14 +45,24 @@
         <tbody id="rows"></tbody>
       </table>
       <div style="display:flex; gap:8px; margin-top:10px;">
-        <button id="addRowBtn" class="btn" title="Ajouter un participant">+ Ajouter</button>
-        <button id="importCsvBtn" class="btn" title="Importer depuis un CSV (;)">📥 Importer CSV</button>
-        <button id="exportCsvBtn" class="btn" title="Exporter en CSV (;)">📤 Exporter CSV</button>
+        <button id="addRowBtn" class="btn btn-blue" title="Ajouter un participant">+ Ajouter</button>
+        <button id="importCsvBtn" class="btn btn-blue" title="Importer depuis un CSV (;)">📥 Importer CSV</button>
+        <button id="exportCsvBtn" class="btn btn-blue" title="Exporter en CSV (;)">📤 Exporter CSV</button>
         <input id="importFile" type="file" accept=".csv,text/csv" style="display:none" />
       </div>
     </aside>
   </div>
 
+  <!-- Aide à droite -->
+<aside class="help" aria-label="Aide et mode d'emploi">
+  <h2>Comment utiliser ?</h2>
+  <ol class="help-steps">
+    <li>Se rendre dans le répertoire <code>ALICE.REF/V1/SCRIBE</code>.</li>
+    <li>Mettre à jour la date de passage du dernier scribe si besoin.</li>
+    <li>Importer le fichier <code>participants.csv</code>.</li>
+  </ol>
+</aside>
   <script src="script.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </body>
 </html>
