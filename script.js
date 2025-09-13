@@ -18,6 +18,26 @@ const resultBar = document.getElementById('resultBar');
 const winnerTextEl = document.getElementById('winnerText');
 const pointerEl = document.querySelector('.pointer');
 
+// Désactive les actions si pas de participants ; seul "Importer CSV" reste actif.
+function updateSpinDisabled() {
+  const hasPeople = people.length > 0;
+  const anyEmpty = people.some(p => !p.name || !p.name.trim());
+
+  // Boutons d’action
+  spinBtn.disabled = !hasPeople || anyEmpty;
+  exportCsvBtn.disabled = !hasPeople;
+  addRowBtn.disabled = !hasPeople; // on autorisera "+ Ajouter" après un import (au moins 1 ligne)
+
+  // Marquage visuel des champs nom vides (si des lignes existent)
+  const inputs = rowsTbody.querySelectorAll('tr input[type="text"]');
+  inputs.forEach((inp, i) => {
+    const empty = !people[i] || !people[i].name || !people[i].name.trim();
+    inp.classList.toggle('invalid', empty);
+    inp.setAttribute('aria-invalid', empty ? 'true' : 'false');
+  });
+}
+
+
 // Rayon dérivé du CSS (en px)
 function getCssRadius() {
   const v = getComputedStyle(document.documentElement).getPropertyValue('--wheel-radius').trim();
@@ -37,30 +57,24 @@ function resizeCanvasToRadius() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-const STORAGE_KEY = 'scribe-wheel:v2';
 
 /** @type {{name:string,last:string,color?:string}[]} */
 let people = [];
 
-// Couleurs par défaut (si non définies personellement)
-function defaultColor(i, n) {
-  const h = Math.round((360/n) * i + 8) % 360;
-  const s = 68 + Math.round(12*Math.sin(i));
-  const l = 48 + Math.round(5*Math.cos(i));
-  return `hsl(${h} ${s}% ${l}%)`;
+// Couleurs par défaut (si non définies personnellement)
+function defaultColor(i) {
+  const golden = 137.508; // répartition uniforme
+  const h = (i * golden) % 360;
+  const s = 68;
+  const l = 52;
+  return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ people })); }
 
 function load() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try { const obj = JSON.parse(raw); if (Array.isArray(obj.people)) people = obj.people; } catch {}
-  }
-  if (!people.length) {
-    people = [ { name:'Alice', last:'', color:'' }, { name:'Benoît', last:'', color:'' }, { name:'Chloé', last:'', color:'' } ];
-  }
+people = []; 
 }
+
 
 // Outils temps / poids
 const DAY = 24*60*60*1000;
@@ -79,24 +93,55 @@ function weightFor(iso, maxBoostDays) {
 }
 
 // Parts & chances
-let slices = []; // { name,startDeg,endDeg,midDeg,color,weight,percent }
+// Parts & chances
+let slices = []; // { name,startDeg,endDeg,midDeg,color,weight(=prob),percent }
 function rebuildSlices() {
-  const dayVals = people.map(p => daysSince(p.last)).filter(v => v !== null);
-  const maxDays = dayVals.length ? Math.max(...dayVals) : 30;
-  const weights = people.map(p => weightFor(p.last, maxDays));
-  const total = weights.reduce((a,b)=>a+b, 0) || 1;
+  const N = people.length;
 
-  let cursor = -90; // on garde le 0° de départ en haut pour le dessin
+  // Couleurs par défaut
+  people.forEach((p, i) => {
+    if (!p.color || !p.color.trim()) p.color = defaultColor(i);
+  });
+
+  // Poids “bruts” basés sur la date
+  const dayVals  = people.map(p => daysSince(p.last)).filter(v => v !== null);
+  const maxDays  = dayVals.length ? Math.max(...dayVals) : 30;
+  const raw      = people.map(p => weightFor(p.last, maxDays));
+  const sumRaw   = raw.reduce((a,b)=>a+b, 0);
+
+  // Baseline : au moins 1% chacun (si >100 personnes, fallback à 1/N)
+  let epsilon = N ? 0.01 : 0;
+  if (N * epsilon >= 1) epsilon = N ? 1 / N : 0; // impossible d'avoir 1% si N>100
+  const reserved = N * epsilon;
+
+  let cursor = -90;
+  let accProb = 0;
   slices = people.map((p, i) => {
-    const w = weights[i];
-    const ang = (w / total) * 360;
+    // probabilité finale (somme = 1)
+    const baseProb = (sumRaw > 0 && reserved < 1)
+      ? epsilon + (1 - reserved) * (raw[i] / sumRaw)
+      : (N ? 1 / N : 0);
+
+    // Assure la somme exacte à 1 (corrige les arrondis sur le dernier)
+    const prob = (i < N - 1) ? baseProb : Math.max(0, 1 - accProb);
+    accProb += prob;
+
+    const ang = prob * 360;
     const startDeg = cursor;
-    const endDeg = cursor + ang;
+    const endDeg   = cursor + ang;
     cursor = endDeg;
-    const percent = (w / total) * 100;
-    return { name: p.name || '—', startDeg, endDeg, midDeg: startDeg + ang/2, color: (p.color && p.color.trim()) || defaultColor(i, people.length), weight: w, percent };
+
+    return {
+      name: (p.name || ''),
+      startDeg, endDeg,
+      midDeg: startDeg + ang / 2,
+      color: p.color,
+      weight: prob,             // on stocke la probabilité normalisée
+      percent: prob * 100
+    };
   });
 }
+
 
 // Dessin
 let rotationDeg = 0;
@@ -130,7 +175,7 @@ function drawWheel() {
     ctx.textBaseline = 'middle';
     ctx.font = '800 14px system-ui, sans-serif';
 
-    const label = (s.name || '—').toUpperCase();
+    const label = (s.name && s.name.trim()) ? s.name.toUpperCase() : '';
 
     // contour blanc
     ctx.lineJoin = 'round';
@@ -168,47 +213,111 @@ function inRange(a, start, end) { const norm = x => (x%360+360)%360; a = norm(a)
 
 // Animation de spin
 let animId = null;
+let isSpinning = false;
 function spin() {
-  if (!people.length) return;
+  ensureAudioContext();
+  // Bloque si pas de participants, si ça tourne déjà, ou si un nom est vide
+  if (!people.length || isSpinning || people.some(p => !p.name || !p.name.trim())) {
+    updateSpinDisabled();
+    return;
+  }
+
+  isSpinning = true;
+  document.body.classList.add('spinning');
+
+  const _lockedBtns = Array.from(document.querySelectorAll('button'));
+  const _lockedInputs = Array.from(document.querySelectorAll('input[type="date"], .name-input, input[type="color"]'));
+  _lockedInputs.forEach(i => i.disabled = true);
+  _lockedBtns.forEach(b => b.disabled = true);
+
   resultBar.style.display = 'none';
+
   const start = performance.now();
   const initial = rotationDeg;
   const target = Math.random() * 360;
-  const turns = 6 + Math.floor(Math.random()*3);
+  const turns = 12 + Math.floor(Math.random()*4);
   const totalDelta = turns*360 + target;
-  const duration = 5200 + Math.random()*1400;
+  const duration = 6800 + Math.random()*3200;
 
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(function step(t){
     const p = Math.min(1, (t - start)/duration);
-    const ease = backOut(p);
+    const ease = (p < 1) ? suspenseEase(p) : 1;
     rotationDeg = initial + totalDelta * ease;
     drawWheel();
-    if (p < 1) { animId = requestAnimationFrame(step); }
-    else { const w = winnerForRotation(rotationDeg); showWinner(w.name); flashSlice(w); }
+    if (p < 1) {
+      animId = requestAnimationFrame(step);
+    } else {
+      const w = winnerForRotation(rotationDeg);
+      showWinner(w.name);
+      flashSlice(w);
+      playWinSound();
+      boomConfetti();
+      queueSpeakWinner(chosen.name, 700);
+      isSpinning = false;
+      document.body.classList.remove('spinning');
+      _lockedBtns.forEach(b => b.disabled = false);
+      _lockedInputs.forEach(i => i.disabled = false);
+      updateSpinDisabled(); // ré-applique la règle des noms requis
+    }
   });
 }
-function backOut(t) { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+function suspenseEase(t){return t<=0?0:t>=1?1:t>0.999?1:1-Math.pow(1-t,3);}
+
 
 function flashSlice(slice) {
   const r = getCssRadius();
   const start = performance.now();
+
   function step(t){
     const p = Math.min(1, (t - start)/1000);
+
+    // On redessine toujours la roue d'abord
     drawWheel();
-    ctx.save(); ctx.translate(r, r); ctx.rotate((Math.PI/180) * rotationDeg);
-    const a0 = (Math.PI/180) * slice.startDeg; const a1 = (Math.PI/180) * slice.endDeg;
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0, r-6, a0, a1); ctx.closePath();
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.25*Math.sin(p*6*Math.PI)) + ')'; ctx.fill();
-    ctx.restore();
-    if (p < 1) requestAnimationFrame(step);
+
+    if (p < 1) {
+      ctx.save();
+      ctx.translate(r, r);
+      ctx.rotate((Math.PI/180) * rotationDeg);
+
+      const a0 = (Math.PI/180) * slice.startDeg;
+      const a1 = (Math.PI/180) * slice.endDeg;
+
+      // Secteur annulaire (ne couvre pas le moyeu)
+      const outerR = r - 6;
+      const innerR = 36; // > 30 (rayon du moyeu)
+      ctx.beginPath();
+      ctx.arc(0, 0, outerR, a0, a1, false);
+      ctx.arc(0, 0, innerR, a1, a0, true);
+      ctx.closePath();
+
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.25*Math.sin(p*6*Math.PI)) + ')';
+      ctx.fill();
+
+      // Remet le moyeu par-dessus
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, Math.PI * 2);
+      ctx.fillStyle = '#111827';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,.15)';
+      ctx.stroke();
+
+      ctx.restore();
+
+      requestAnimationFrame(step);
+    }
+    // p === 1 : on s'arrête sur la roue "normale" (pas d'overlay)
   }
+
   requestAnimationFrame(step);
 }
 
+
+
 function showWinner(name){
   const n = name || '—';
-  winnerTextEl.textContent = `Le prochain scribe est ${n}, félicitations ! 🎉`;
+  winnerTextEl.textContent = `🎉 Le prochain scribe est ${n}, félicitations ! 🎉`;
   resultBar.style.display = 'flex';
 }
 
@@ -226,8 +335,16 @@ function renderTable() {
 
     // Nom
     const tdName = document.createElement('td');
-    const inpName = document.createElement('input'); inpName.type = 'text'; inpName.value = p.name; inpName.placeholder = 'Nom';
-    inpName.addEventListener('input', () => { p.name = inpName.value; onDataChange(); });
+    const inpName = document.createElement('input'); inpName.type = 'text'; inpName.value = p.name; inpName.placeholder = 'Nom'; inpName.classList.add('name-input');
+    inpName.maxLength = 18;
+ inpName.addEventListener('input', () => {
+  if (inpName.value.length > 18) {
+    inpName.value = inpName.value.slice(0, 18);
+  }
+  p.name = inpName.value;
+  onDataChange({ redrawTable: false });
+});
+
     tdName.appendChild(inpName);
 
     // Dernier passage
@@ -238,41 +355,88 @@ function renderTable() {
 
     // Couleur (swatch + color input)
     const tdColor = document.createElement('td'); tdColor.className = 'color-cell';
-    const sw = document.createElement('div'); sw.className = 'swatch'; sw.style.background = (p.color && p.color.trim()) || defaultColor(idx, people.length);
+    const sw = document.createElement('div'); sw.className = 'swatch'; sw.style.background = (p.color && p.color.trim()) || defaultColor(idx);
     const colorInput = document.createElement('input'); colorInput.type = 'color'; colorInput.value = toHexColor(sw.style.background);
     colorInput.style.display = 'none';
-    sw.addEventListener('click', () => colorInput.click());
+    sw.addEventListener('click', () => { if (isSpinning) return; colorInput.click(); });
     colorInput.addEventListener('input', () => { p.color = colorInput.value; sw.style.background = p.color; onDataChange(); });
     tdColor.appendChild(sw); tdColor.appendChild(colorInput);
 
     // % chance (lecture seule)
     const tdPct = document.createElement('td'); tdPct.className = 'chance-cell';
-    const w = weights[idx]; const pct = (w / total) * 100; tdPct.textContent = pct.toFixed(1) + '%';
+    const pct = (slices[idx]?.percent ?? 0); tdPct.textContent = pct.toFixed(1) + '%';
 
     // Supprimer
     const tdAct = document.createElement('td'); tdAct.className = 'action-cell';
     const del = document.createElement('button'); del.className = 'iconbtn'; del.title = 'Supprimer'; del.innerHTML = '×';
-    del.addEventListener('click', () => { people.splice(idx,1); onDataChange(); renderTable(); });
+    del.addEventListener('click', () => {
+  const name = (p.name || '').trim();
+  if (name) {
+    const ok = confirm(`Êtes-vous sûr de vouloir supprimer notre cher collègue ${name} du tableau des scribes ?`);
+    if (!ok) return;
+  }
+  people.splice(idx, 1);
+  onDataChange();
+  renderTable();
+});
+
     tdAct.appendChild(del);
 
     tr.appendChild(tdName); tr.appendChild(tdDate); tr.appendChild(tdColor); tr.appendChild(tdPct); tr.appendChild(tdAct);
     rowsTbody.appendChild(tr);
   });
+
+  // Après rendu, mettre à jour l'état "noms requis"
+  updateSpinDisabled();
 }
 
 function toHexColor(cssColor){
-  // Convertit hsl()/rgb() éventuels en #rrggbb pour input[type=color]
-  const c = document.createElement('canvas'); const x = c.getContext('2d'); x.fillStyle = cssColor; const computed = x.fillStyle; // normalisé en rgb(a)
-  const m = computed.match(/rgb[a]?\((\d+),\s*(\d+),\s*(\d+)/i); if(!m) return '#ffffff';
-  const r = Number(m[1]).toString(16).padStart(2,'0'); const g = Number(m[2]).toString(16).padStart(2,'0'); const b = Number(m[3]).toString(16).padStart(2,'0');
+  if (!cssColor) return '#ffffff';
+  const probe = document.createElement('div');
+  probe.style.display = 'none';
+  document.body.appendChild(probe);
+
+  // Essaye d'abord en background (utile quand on lit sw.style.background)
+  probe.style.background = cssColor;
+  let rgb = getComputedStyle(probe).backgroundColor;
+
+  // Si ce n’est pas un rgb/rgba, tente via color
+  if (!/^rgb/i.test(rgb)) {
+    probe.style.background = '';
+    probe.style.color = cssColor;
+    rgb = getComputedStyle(probe).color;
+  }
+
+  document.body.removeChild(probe);
+
+  const m = rgb && rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!m) return '#ffffff';
+
+  const r = Number(m[1]).toString(16).padStart(2,'0');
+  const g = Number(m[2]).toString(16).padStart(2,'0');
+  const b = Number(m[3]).toString(16).padStart(2,'0');
   return `#${r}${g}${b}`;
 }
 
-function onDataChange() { rebuildSlices(); save(); drawWheel(); renderTable(); }
 
-addRowBtn.addEventListener('click', () => { people.push({ name: '', last: '', color: '' }); onDataChange(); });
+function onDataChange({ redrawTable = true } = {}) {
+  rebuildSlices();
+  drawWheel();
+  if (redrawTable) renderTable();
+  // Toujours ré-appliquer la règle "noms requis"
+  updateSpinDisabled();
+}
 
-window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); spin(); } });
+addRowBtn.addEventListener('click', () => {
+people.push({ name: '', last: '', color: '' });
+  onDataChange();
+  // Focus le champ Nom de la dernière ligne pour encourager la saisie immédiate
+  requestAnimationFrame(() => {
+    const lastName = rowsTbody.querySelector('tr:last-child input[type="text"]');
+    if (lastName) lastName.focus();
+  });
+});
+
 spinBtn.addEventListener('click', spin);
 exportCsvBtn.addEventListener('click', exportCSV);
 importCsvBtn.addEventListener('click', () => importFileInput.click());
@@ -285,16 +449,25 @@ rebuildSlices();
 drawWheel();
 renderTable();
 positionPointer();
+updateSpinDisabled();
+
 window.addEventListener('resize', () => { resizeCanvasToRadius(); drawWheel(); positionPointer(); });
 
-/* === Import/Export CSV (séparateur ;) === */
 function exportCSV() {
   const header = ['Nom', 'Dernier passage', 'Couleur'];
-  const rows = people.map(p => [
-    p.name || '',
-    p.last || '',
-    (p.color && p.color.trim()) || ''
-  ]);
+
+  const rows = people.map((p, i) => {
+    const name = (p.name || '').trim();
+    // date stockée en ISO (YYYY-MM-DD) -> JJ/MM/AAAA
+    const dateFR = formatDateFR(p.last || '');
+
+    // couleur effective : si pas de couleur utilisateur, on prend la couleur par défaut
+    const effectiveCss = (p.color && p.color.trim()) || defaultColor(i);
+    const hex = toHexColor(effectiveCss); // toujours #rrggbb
+
+    return [name, dateFR, hex];
+  });
+
   const csv = [header, ...rows].map(r => r.map(csvEscape).join(';')).join('\r\n');
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -306,6 +479,7 @@ function exportCSV() {
   a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
 }
+
 
 function csvEscape(val) {
   val = String(val ?? '');
@@ -408,6 +582,14 @@ function normalizeDate(s) {
   return '';
 }
 
+function formatDateFR(iso) {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  return `${m[3]}/${m[2]}/${m[1]}`; // JJ/MM/AAAA
+}
+
+
 function positionPointer() {
   const areaRect = document.querySelector('.wheel-area').getBoundingClientRect();
   const canvasRect = canvas.getBoundingClientRect();
@@ -418,16 +600,235 @@ function positionPointer() {
   // Alignement vertical sur le centre exact du canvas
   pointerEl.style.top = (canvasRect.top - areaRect.top + canvasRect.height / 2) + 'px';
   pointerEl.style.transform = 'translateY(-50%)';
+  // La rotation de la roue est gérée dans drawWheel(); la flèche reste fixe.
 }
 
-// Polyfill roundRect (pas indispensable ici mais gardé si besoin futur)
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-    if (typeof r === 'number') r = {tl:r, tr:r, br:r, bl:r};
-    const {tl=0,tr=0,br=0,bl=0} = r||{};
-    this.beginPath(); this.moveTo(x+tl, y); this.lineTo(x+w-tr, y); this.quadraticCurveTo(x+w, y, x+w, y+tr);
-    this.lineTo(x+w, y+h-br); this.quadraticCurveTo(x+w, y+h, x+w-br, y+h);
-    this.lineTo(x+bl, y+h); this.quadraticCurveTo(x, y+h, x, y+h-bl);
-    this.lineTo(x, y+tl); this.quadraticCurveTo(x, y, x+tl, y); this.closePath(); return this;
-  }
+// Audio
+let audioCtx = null;
+function ensureAudioContext(){ if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } }
+function playWinSound(){
+  if(!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+  notes.forEach((f,i)=>{
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    o.connect(g); g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(0, now+i*0.02);
+    g.gain.linearRampToValueAtTime(0.12, now+0.01+i*0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now+0.24+i*0.02);
+    o.start(now+i*0.02);
+    o.stop(now+0.26+i*0.02);
+  });
 }
+
+// Confettis (utilise canvas-confetti si dispo)
+function boomConfetti(anchor = resultBar){
+  if (typeof confetti !== 'function') return;
+
+  const vw = Math.max(1, window.innerWidth);
+  const vh = Math.max(1, window.innerHeight);
+  const rect = (anchor && anchor.getBoundingClientRect()) || { left: vw*0.5, right: vw*0.5, top: vh*0.3, height: 40 };
+
+  const y = (rect.top + rect.height / 2) / vh;
+  const leftX  = Math.max(0, Math.min(1, (rect.left  - 8) / vw));
+  const rightX = Math.max(0, Math.min(1, (rect.right + 8) / vw));
+
+  // angles proches de 90° (haut), légèrement inclinés vers l’intérieur
+  const end = Date.now() + 600;
+  (function frame(){
+    confetti({ particleCount: 40, spread: 50, origin: { x: leftX,  y }, angle: 92,  startVelocity: 55 });
+    confetti({ particleCount: 40, spread: 50, origin: { x: rightX, y }, angle: 88, startVelocity: 55 });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+/* === Rainbow Cursor Trail (plein écran, non bloquant) === */
+(function(){
+  const cvs = document.createElement('canvas');
+  cvs.id = 'cursorTrail';
+  Object.assign(cvs.style, {
+    position: 'fixed',
+    inset: '0',
+    pointerEvents: 'none',
+    zIndex: 999
+  });
+  document.body.appendChild(cvs);
+
+  const trailCtx = cvs.getContext('2d');
+  let dpr=1, W=0, H=0;
+  function resize(){
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    cvs.width = Math.max(1, Math.round(W * dpr));
+    cvs.height = Math.max(1, Math.round(H * dpr));
+    trailCtx.setTransform(dpr, 0, 0, dpr, 0, 0); // dessine en px CSS
+  }
+  resize();
+  addEventListener('resize', resize);
+
+  const particles = [];
+  const MAX_PARTICLES = 160;     // ajuste si tu veux plus/moins dense
+  const STEP = 6;                // distance en px entre spawns
+  let hue = 0;
+  let lastX = null, lastY = null;
+
+  addEventListener('pointermove', (e)=>{
+    const x = e.clientX, y = e.clientY;
+    if (lastX == null) { lastX = x; lastY = y; }
+    const dx = x - lastX, dy = y - lastY;
+    const dist = Math.hypot(dx, dy) || 0;
+
+    // on “tisse” des particules régulièrement le long du segment (last -> pos)
+    for (let i = 0; i < dist; i += STEP) {
+      const t = i / dist;
+      spawn(lastX + dx*t, lastY + dy*t);
+    }
+    lastX = x; lastY = y;
+  });
+
+  function spawn(x, y){
+    hue = (hue + 6) % 360; // défilement de teinte
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: (Math.random() - 0.8) * 0.6 - 0.1, // légère poussée vers le haut
+      size: 4 + Math.random()*3,
+      life: 0,
+      maxLife: 500 + Math.random()*250,      // 0.5–0.75s env.
+      hue
+    });
+    if (particles.length > MAX_PARTICLES) {
+      particles.splice(0, particles.length - MAX_PARTICLES);
+    }
+  }
+
+  let raf = null;
+  function tick(){
+    raf = requestAnimationFrame(tick);
+    trailCtx.clearRect(0, 0, W, H);
+    trailCtx.globalCompositeOperation = 'lighter'; // glow additif
+
+    // dessine du plus ancien au plus récent (ou l’inverse, peu importe ici)
+    for (let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.life += 16;                          // ~60 fps
+      if (p.life >= p.maxLife) { particles.splice(i,1); continue; }
+      p.x += p.vx; p.y += p.vy;
+      const a = 1 - (p.life / p.maxLife);    // alpha décroissant 1→0
+
+      trailCtx.beginPath();
+      trailCtx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      trailCtx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${a})`;
+      trailCtx.fill();
+    }
+  }
+  tick();
+
+  // pause quand l’onglet est inactif
+  addEventListener('visibilitychange', () => {
+    if (document.hidden) { cancelAnimationFrame(raf); raf = null; }
+    else if (!raf) { raf = requestAnimationFrame(tick); }
+  });
+})();
+
+// À coller une fois (fin de script par ex.)
+document.addEventListener('keydown', (e)=>{
+  if (e.repeat) return;
+  const tag = (e.target.tagName||'').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+  if ((e.code === 'Space' || e.code === 'Enter') && !isSpinning) spin();
+});
+
+function preSpinCountdown(next){
+  const o = document.createElement('div');
+  Object.assign(o.style,{position:'fixed',inset:'0',display:'grid',placeItems:'center',background:'rgba(0,0,0,.35)',backdropFilter:'blur(2px)',font:'900 120px system-ui',color:'#fff',zIndex:1000});
+  document.body.appendChild(o);
+  let n=3; o.textContent=n;
+  const iv = setInterval(()=>{ n--; o.textContent = n || 'GO'; if(n<0){ clearInterval(iv); o.remove(); next(); } }, 700);
+}
+
+function speakWinner(name, locale='fr-FR'){
+  try{
+    if (!ttsReady) loadVoices();
+    if (speechSynthesis.speaking || speechSynthesis.pending) {
+      speechSynthesis.cancel();
+      // Chrome aime une micro-pause après cancel()
+      setTimeout(()=>speakWinner(name, locale), 50);
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(`Le prochain scribe est ${name}`);
+    u.lang = locale;
+    u.rate = 1; u.pitch = 1; u.volume = 1;
+    if (ttsVoice) u.voice = ttsVoice;
+    speechSynthesis.speak(u);
+  }catch{}
+}
+
+
+// --- TTS robuste (Chrome/Firefox) ---
+let ttsVoice = null;
+
+// Attendre que les voix soient prêtes (Chrome charge de façon asynchrone)
+function waitForVoicesReady(timeout = 2000){
+  return new Promise(resolve => {
+    const have = speechSynthesis.getVoices();
+    if (have && have.length) { resolve(have); return; }
+    let done = false;
+    const onV = () => {
+      if (done) return;
+      done = true;
+      speechSynthesis.removeEventListener('voiceschanged', onV);
+      resolve(speechSynthesis.getVoices() || []);
+    };
+    speechSynthesis.addEventListener('voiceschanged', onV);
+    // Déclenche le chargement
+    speechSynthesis.getVoices();
+    // Fallback timeout
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      speechSynthesis.removeEventListener('voiceschanged', onV);
+      resolve(speechSynthesis.getVoices() || []);
+    }, timeout);
+  });
+}
+
+function pickVoice(voices, locale='fr-FR'){
+  return voices.find(v => /google.*fr/i.test(v.name))
+      || voices.find(v => v.lang === locale)
+      || voices.find(v => (v.lang||'').toLowerCase().startsWith('fr'))
+      || voices[0]
+      || null;
+}
+
+// Prime TTS sur la 1ère interaction (débloque l’autoplay)
+document.addEventListener('pointerdown', () => {
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0; // inaudible
+    speechSynthesis.speak(u);
+  } catch {}
+}, { once:true });
+
+// File l’annonce après un délai (ex: confettis), en attendant les voix si nécessaire
+function queueSpeakWinner(name, delayMs = 0){
+  setTimeout(() => {
+    waitForVoicesReady().then(voices => {
+      try {
+        if (!ttsVoice && voices.length) ttsVoice = pickVoice(voices, 'fr-FR');
+        // Évite les superpositions
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+
+        const u = new SpeechSynthesisUtterance(`Le prochain scribe est ${name}`);
+        u.lang = 'fr-FR';
+        u.rate = 1; u.pitch = 1; u.volume = 1;
+        if (ttsVoice) u.voice = ttsVoice;
+        speechSynthesis.speak(u);
+      } catch {}
+    });
+  }, delayMs);
+}
+
